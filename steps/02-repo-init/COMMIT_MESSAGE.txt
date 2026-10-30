@@ -1,0 +1,7 @@
+chore(repo): 저장소 골격과 협업 규칙 추가
+
+- README.md를 docs/PROMPT.md로 이동하고 프로젝트 소개 README 작성
+- .gitignore, .gitattributes 추가
+- docs/CONTRIBUTING.md 추가, steps/ 폴더 생성
+
+Refs: #3

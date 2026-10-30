@@ -1,0 +1,22 @@
+name: 문제 보고
+description: 실행 오류·환경 문제
+title: "[BUG] "
+labels: ["type:fix"]
+body:
+  - type: input
+    id: step
+    attributes:
+      label: 관련 단계
+      placeholder: 06-compose-db
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 방법
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: 오류 로그
+      render: text
