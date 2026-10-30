@@ -15,10 +15,10 @@
 ## 팀
 | 역할 | 담당 |
 |---|---|
-| Git/협업 | A |
-| Linux·자동화 | B |
-| Docker·Compose | C |
-| ML·API | D |
+| Git/협업 | Park |
+| Linux·자동화 | Ryu |
+| Docker·Compose | Oh |
+| ML·API | Lee |
 
 ## 문서
 - [프로젝트 프롬프트](docs/PROMPT.md)
