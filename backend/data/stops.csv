@@ -1,0 +1,4 @@
+stop_id,route_id,stop_name,place_kind
+3001,R102,충남대,bus_stop
+3002,R102,유성구청,bus_stop
+3010,R311,유성온천역,bus_stop

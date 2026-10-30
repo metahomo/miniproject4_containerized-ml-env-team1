@@ -1,0 +1,90 @@
+[
+  {
+    "file": "bus_full.jpg",
+    "title": "버스 차내 사진 · 붐빔",
+    "description": "토마쉬프 마조비에츠키 시내버스 차내, 통로에 입석 승객(시연 앞차 CAM-DEMO-01). 영상 7초 장면",
+    "source_url": "https://commons.wikimedia.org/wiki/File:2022.06.29_Inside_a_public_bus_in_Tomasz%C3%B3w_Mazowiecki,_Poland.ogg",
+    "license": "Public domain",
+    "author": "WrS.tm.pl"
+  },
+  {
+    "file": "bus_empty.jpg",
+    "title": "버스 차내 사진 · 한산",
+    "description": "같은 도시 시내버스(Solaris Urbino 12) 뒤쪽 좌석에서 본 차내, 좌석 승객 몇 명(시연 다음 차 CAM-DEMO-02). 영상 46초 장면",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Przejazd_jednyn_z_nowych_autobus%C3%B3w_MZK_Solaris_Urbino_12_w_Tomaszowie_Mazowieckim_w_wojew%C3%B3dztwie_%C5%82%C3%B3dzkim._Inwestycja_z_roku_2017.ogv",
+    "license": "Public domain",
+    "author": "Mux8cont"
+  },
+  {
+    "file": "bus_blur.jpg",
+    "title": "버스 차내 사진 · 흐림",
+    "description": "붐빔 사진을 흐리게 만든 것 — 판독 불확실 시연용(CAM-DEMO-03)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:2022.06.29_Inside_a_public_bus_in_Tomasz%C3%B3w_Mazowiecki,_Poland.ogg",
+    "license": "Public domain",
+    "author": "WrS.tm.pl"
+  },
+  {
+    "file": "videos/bus_crowded_tomaszow.webm",
+    "title": "버스 차내 · 혼잡",
+    "description": "폴란드 토마쉬프 마조비에츠키 시내버스 차내, 통로에 입석 승객이 서 있음 (10초, 손으로 들고 촬영, 음성 제거)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:2022.06.29_Inside_a_public_bus_in_Tomasz%C3%B3w_Mazowiecki,_Poland.ogg",
+    "license": "Public domain",
+    "author": "WrS.tm.pl"
+  },
+  {
+    "file": "videos/bus_seated_tomaszow.webm",
+    "title": "버스 차내 · 여유",
+    "description": "토마쉬프 마조비에츠키 시내버스(Solaris Urbino 12) 뒤쪽 좌석에서 앞을 본 시점, 좌석 승객 몇 명 (47초, 원본 앞 47초만 사용, 음성 제거)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Przejazd_jednyn_z_nowych_autobus%C3%B3w_MZK_Solaris_Urbino_12_w_Tomaszowie_Mazowieckim_w_wojew%C3%B3dztwie_%C5%82%C3%B3dzkim._Inwestycja_z_roku_2017.ogv",
+    "license": "Public domain",
+    "author": "Mux8cont"
+  },
+  {
+    "file": "videos/subway_crowded_moscow.webm",
+    "title": "지하철 차내 · 혼잡",
+    "description": "모스크바 지하철 객차 내부, 통로 끝까지 입석 승객이 가득 참 (16초, 원본 16초 이후 객차 내부 구간만 사용, 음성 제거). 겹쳐 가려진 사람이 많아 인원이 적게 세어진다(research R22 밀집 과소 계수)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Metro_de_Mosc%C3%BA_1.webm",
+    "license": "CC BY-SA 4.0",
+    "author": "ProtoplasmaKid"
+  },
+  {
+    "file": "videos/subway_seated_mexico.webm",
+    "title": "지하철 차내 · 보통",
+    "description": "멕시코시티 메트로 2호선 객차 내부, 좌석 승객 여러 명·입석 거의 없음 (41초, 원본 앞 41초만 사용, 음성 제거)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Trayecto_del_Metro_de_la_Ciudad_de_M%C3%A9xico_L%C3%ADnea_2.webm",
+    "license": "CC BY 4.0",
+    "author": "ProtoplasmaKid"
+  },
+  {
+    "file": "videos/concourse_crowded_saint_lazare.webm",
+    "title": "역 대합실 · 혼잡",
+    "description": "파리 생라자르역 대합실, 높은 위치에서 내려다본 퇴근길 인파 (7초, 타임랩스)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:2025-11-06_17-33-16_-_Paris_-_Saint-Lazare_-_Time-lapse.webm",
+    "license": "CC BY-SA 4.0",
+    "author": "Baidax"
+  },
+  {
+    "file": "videos/crossing_timelapse_shibuya.webm",
+    "title": "교차로 · 고정 시점 혼잡",
+    "description": "시부야 스크램블 교차로를 높은 곳에서 고정 촬영한 타임랩스 — 관제 카메라와 비슷한 시점, 추이 그래프 확인용 (35초)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Shibuya_crossing_time-lapse_2019-01-05.webm",
+    "license": "CC0",
+    "author": "Asanagi"
+  },
+  {
+    "file": "videos/platform_sparse_ragigudda.webm",
+    "title": "지하철 승강장 · 여유",
+    "description": "벵갈루루 라기굿다역 승강장, 사람이 거의 없음 (21초, 손으로 들고 이동하며 촬영)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Interiors_of_Ragigudda_metro_station,_Bangalore_(2025).webm",
+    "license": "CC BY-SA 4.0",
+    "author": "Gpkp"
+  },
+  {
+    "file": "videos/train_interior_nyc.webm",
+    "title": "열차 차내 · 여유",
+    "description": "뉴욕 지하철 차내, 승객 몇 명 (14초)",
+    "source_url": "https://commons.wikimedia.org/wiki/File:NYC_Subway_train_inside_vc.ogv",
+    "license": "CC BY-SA 2.0",
+    "author": "otto-yamamoto (Flickr)"
+  }
+]

@@ -1,0 +1,14 @@
+# 개발 쪽 전용 — 소스에서 이미지를 빌드한다. 받는 쪽은 이 파일이 필요 없다(이미지를 받아 docker-compose.yml 만으로 실행).
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml build
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# 저장소의 모델 폴더를 쓰려면 CV_MODELS_DIR=./backend/models
+# 빌드 컨텍스트는 저장소 루트 — 백엔드가 design/ 의 DDL 을 쓰고, .dockerignore 를 함께 쓴다.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile

@@ -1,0 +1,118 @@
+/* 대시보드 레이아웃 (Intent-Tasks: 접이식 사이드바 + 상단 헤더 + 메인) — 반응형 640/833/1068 (style-guide §08) */
+.shell{display:grid;grid-template-columns:var(--sidebar-w) 1fr;grid-template-rows:var(--header-h) 1fr;min-height:100vh}
+.shell.collapsed{grid-template-columns:var(--sidebar-w-collapsed) 1fr}
+.sidebar{grid-row:1/3;background:var(--color-surface-black);color:var(--color-on-dark);display:flex;flex-direction:column;padding:var(--space-sm) 0;position:sticky;top:0;height:100vh;overflow:auto}
+.sidebar .brand{display:flex;align-items:center;justify-content:space-between;gap:var(--space-xs);padding:6px var(--space-md) var(--space-md);color:var(--color-on-dark)}
+.sidebar .brand b{font:700 14px/1.3 var(--font-text)}
+.sidebar .toggle{background:transparent;border:0;color:var(--color-on-dark);cursor:pointer;font-size:18px;padding:6px}
+.sidebar .group{padding:var(--space-sm) var(--space-md) 4px;color:var(--color-body-muted);font:400 11px/1 var(--font-text);letter-spacing:.4px;text-transform:uppercase}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:10px var(--space-md);color:var(--color-on-dark);opacity:.78;font:400 14px/1.3 var(--font-text);border-left:3px solid transparent}
+.sidebar a:hover{opacity:1;text-decoration:none;background:rgba(255,255,255,.06)}
+.sidebar a.active{opacity:1;border-left-color:var(--color-primary-on-dark);background:rgba(255,255,255,.08)}
+.sidebar a .ic{flex:0 0 26px;width:26px;text-align:center;white-space:nowrap;letter-spacing:-.5px;font:400 12px/1 var(--font-mono);color:var(--color-body-muted)}
+.shell.collapsed .sidebar a span.lbl,.shell.collapsed .sidebar .group,.shell.collapsed .sidebar .brand b{display:none}
+.header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);padding:0 var(--space-lg);background:rgba(245,245,247,.85);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:var(--border-hairline)}
+.header .crumbs{display:flex;gap:6px;align-items:center;color:var(--color-ink-muted-48)}
+.header .crumbs b{color:var(--color-ink)}
+.header .chips{display:flex;gap:var(--space-xs);align-items:center}
+.main{padding:var(--space-lg);max-width:var(--container-grid);width:100%}
+.page-title{margin-bottom:var(--space-lg)}
+.page-title p{color:var(--color-ink-muted-80);margin-top:6px}
+/* 진행 레일 (C1) — 메인 영역 맨 위 */
+/* 차단 블록 (C2) */
+.gate{background:var(--color-canvas);border:1px solid var(--status-crowded);border-left-width:6px;border-radius:var(--rounded-lg);padding:var(--space-md) var(--space-lg)}
+.gate.output{border-color:var(--status-uncertain)}
+.gate h4{font:700 14px/1.29 var(--font-text)}
+.gate .kv{display:grid;grid-template-columns:auto 1fr;gap:4px var(--space-md);margin:var(--space-xs) 0}
+.gate .kv dt{color:var(--color-ink-muted-48);font:400 14px/1.43 var(--font-text)}
+.gate .kv dd{margin:0;font:400 14px/1.43 var(--font-text)}
+/* 결과 카드 (C3) */
+.result .big{font:700 40px/1.1 var(--font-display);color:var(--color-ink)}
+.result .big.ref{font-size:28px;color:var(--color-ink-muted-48)}
+.result .meta{display:flex;flex-wrap:wrap;gap:var(--space-xs) var(--space-md);color:var(--color-ink-muted-80)}
+.notice{font:400 12px/1.4 var(--font-text);color:var(--color-ink-muted-48);border-top:1px solid var(--color-hairline);padding-top:var(--space-xs);margin-top:var(--space-xs)}
+/* 드로어 (C6) */
+.drawer-back{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:30}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(440px,100%);background:var(--color-canvas);z-index:31;padding:var(--space-lg);overflow:auto;box-shadow:none;border-left:1px solid var(--color-hairline)}
+.drawer dl{display:grid;grid-template-columns:auto 1fr;gap:6px var(--space-md)}
+.drawer dt{color:var(--color-ink-muted-48)}.drawer dd{margin:0}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--color-ink);color:var(--color-on-dark);padding:10px 18px;border-radius:var(--rounded-pill);font:400 14px/1.29 var(--font-text);z-index:50}
+.preview{max-height:260px;border-radius:var(--rounded-sm);border:1px solid var(--color-hairline);object-fit:contain;background:var(--color-canvas-parchment)}
+.delay{color:var(--status-normal)}
+@media (max-width:1068px){.grid-4{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:833px){.shell{grid-template-columns:var(--sidebar-w-collapsed) 1fr}.sidebar a span.lbl,.sidebar .group,.sidebar .brand b{display:none}.grid-3,.grid-4{grid-template-columns:repeat(2,1fr)}.header .crumbs{display:none}}
+@media (max-width:640px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.main{padding:16px}table{display:block;overflow-x:auto}.shell{grid-template-columns:0 1fr}.sidebar{display:none}}
+
+/* S2b 카메라 전원 관리 — 엑셀처럼 칸이 나뉜 시트 */
+.sheet-wrap{overflow-x:auto;border:1px solid var(--color-hairline);border-radius:var(--rounded-sm)}
+.sheet{border-collapse:collapse;min-width:720px}
+.sheet th,.sheet td{border:1px solid var(--color-hairline);padding:8px 12px;vertical-align:middle;white-space:nowrap}
+.sheet thead th{background:var(--color-canvas-parchment);color:var(--color-ink-muted-80);text-transform:none;font-size:13px;position:sticky;top:0}
+.sheet tbody tr:nth-child(even) td{background:var(--color-surface-pearl)}
+.sheet tbody tr:hover td{background:#eef5ff}
+.sheet tr.is-off td{color:var(--color-ink-muted-48)}
+.sheet tr.sheet-edit td{background:var(--color-canvas-parchment);white-space:normal}
+.sheet-gear{padding:2px 8px;border-width:1px}
+.power{display:inline-flex;align-items:center;gap:6px;min-width:64px;border:0;border-radius:var(--rounded-pill);padding:3px 10px 3px 3px;cursor:pointer;
+  font:700 12px/1.4 var(--font-text);background:var(--status-none);color:var(--color-ink-muted-80);transition:background .15s}
+.power .knob{width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.power.on{background:var(--status-free);color:#fff;flex-direction:row-reverse;padding:3px 3px 3px 10px}
+.power:disabled{opacity:.6;cursor:wait}
+.power:focus-visible{outline:2px solid var(--color-primary-focus);outline-offset:2px}
+.webcam-chip{display:inline-flex;align-items:center;gap:6px}
+.webcam-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--status-crowded);animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* S10 권한 매트릭스 — 행 = 기능, 열 = 사용자 유형 */
+.rbac-wrap{overflow-x:auto}
+.rbac-matrix th,.rbac-matrix td{text-align:center;vertical-align:middle}
+.rbac-matrix .feat{text-align:left;min-width:240px;font-weight:400}
+.rbac-matrix .feat code{display:block;margin-top:2px}
+.rbac-col{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 auto;background:none;border:0;padding:4px 6px;border-radius:var(--rounded-lg);cursor:pointer;font:inherit;color:inherit}
+.rbac-col:hover:not(:disabled){background:var(--color-hairline)}
+.rbac-col:disabled{cursor:default}
+.rbac-matrix td.cell label{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;cursor:pointer}
+.rbac-matrix td.cell input{width:18px;height:18px;cursor:pointer}
+.rbac-matrix td.locked label,.rbac-matrix td.locked input{cursor:not-allowed}
+.rbac-matrix td.locked{background:var(--color-hairline)}
+.rbac-matrix td.changed,.rbac-legend.changed{background:color-mix(in srgb,var(--status-normal) 22%,transparent)}
+.rbac-matrix .lock{font-size:11px}
+.rbac-matrix .dot,.rbac-legend+.dot,p .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--status-normal)}
+.rbac-legend{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:middle}
+.rbac-matrix tfoot td,.rbac-matrix tfoot th{border-top:2px solid var(--color-hairline)}
+/* 일반 사용자 화면 (2026-09-30 홈 단순화) — 사이드바 없이 상단 바 + 가운데 한 열 */
+.simple-shell{min-height:100vh;background:var(--color-canvas-parchment,var(--color-canvas))}
+.simple-bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);padding:10px var(--space-lg);background:rgba(245,245,247,.85);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:var(--border-hairline)}
+.simple-bar .brand-link{font-weight:700;color:var(--color-ink);text-decoration:none}
+.simple-bar .nav-link{color:var(--color-ink-muted-48);text-decoration:none;font-weight:600;padding:4px 8px;border-radius:var(--rounded-sm)}
+.simple-bar .nav-link.active,.simple-bar .nav-link:hover{color:var(--color-ink)}
+.simple-main{max-width:760px;margin:0 auto;padding:var(--space-lg) 16px}
+.bus-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-xs)}
+.bus-item{display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap;padding:var(--space-md);background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:var(--rounded-lg)}
+.bus-item .when{font-size:1.25rem;font-weight:700}
+.bus-item .fill{display:flex;align-items:center;gap:var(--space-xs);flex-wrap:wrap}
+@media (max-width:640px){.simple-bar{padding:10px 16px}}
+/* 로그인·가입 화면 (2026-09-30) — 펠트 동물 버스 그림 배경(시안 4) + 반투명 유리 카드.
+   3D: .auth-scene 이 원근(perspective)으로 좌우 3°·위아래 2° 기울고, 레이어는 깊이(--d)만큼 마우스를 따라 옮겨 간다(먼 배경 -12, 버스 16, 앞쪽 도로 34px).
+   가장자리가 비지 않게 장면을 4% 넓게 깐다. --mx·--my 는 Login.tsx useParallax 가 넣는다. */
+.auth-shell{--mx:0;--my:0;position:relative;min-height:100vh;display:grid;align-items:start;justify-items:center;padding:clamp(32px,14vh,180px) 16px 16px;overflow:hidden;background:#e8ecee;isolation:isolate}
+.auth-bg{position:absolute;inset:0;z-index:-1;pointer-events:none;perspective:1200px}
+.auth-scene{position:absolute;inset:-4%;transform-style:preserve-3d;transform:rotateY(calc(var(--mx) * 3deg)) rotateX(calc(var(--my) * -2deg));will-change:transform}
+.auth-layer{position:absolute;inset:0;will-change:transform;transform:translate3d(calc(var(--mx) * var(--d) * 1px),calc(var(--my) * var(--d) * .5px),0)}
+.auth-layer svg{width:100%;height:100%;display:block}
+.auth-layer.far{--d:-12}.auth-layer.mid{--d:16}.auth-layer.near{--d:34}
+.auth-layer .bob{animation:auth-bob 2.6s ease-in-out infinite alternate}
+@keyframes auth-bob{from{transform:translateY(0)}to{transform:translateY(-2px)}}
+/* 글자가 가리지 않게: 전체를 밝게 띄우고 카드 둘레를 한 번 더 밝힌다 */
+.auth-lift{position:absolute;inset:0;background:radial-gradient(ellipse 40% 46% at 50% 42%,rgba(255,255,255,.8),rgba(255,255,255,0) 72%),linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.12) 70%,rgba(255,255,255,.18))}
+@media (prefers-reduced-motion:reduce){.auth-layer .bob{animation:none}}
+/* 휴대폰: 버스·앞쪽 도로를 화면 아래 절반 높이로 줄여 버스 전체가 보이게 (먼 배경은 화면 가득) */
+@media (max-width:640px){.auth-layer.mid svg,.auth-layer.near svg{position:absolute;bottom:0;height:50%}}
+.auth-inner{position:relative;width:100%;max-width:420px}
+.auth-title{font-family:var(--font-display);font-size:34px;font-weight:800;letter-spacing:-.02em;text-align:center;margin:0;color:var(--color-ink)}
+.auth-sub{text-align:center;margin:6px 0 24px;color:var(--color-ink-muted-80);font-size:15px}
+.auth-card{background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,.75);border-radius:24px;padding:28px;box-shadow:0 20px 50px -18px rgba(60,45,0,.28),0 1px 0 rgba(255,255,255,.8) inset}
+.auth-card .input{background:rgba(255,255,255,.85);max-width:none!important}
+.auth-card .btn-primary{max-width:none!important;min-height:46px}
+.auth-shell .utility-card{background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,.75)}
+.auth-shell .page-title{text-align:center}

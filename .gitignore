@@ -23,3 +23,34 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# ---- 숨통 서비스 (backend·frontend·docker) ----
+# 파이썬 도구 부산물
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# 로컬 SQLite DB (도커는 named volume 에 둔다)
+backend/cv.db
+backend/cv.db-journal
+backend/cv.db-shm
+backend/cv.db-wal
+# 모델 가중치 — 라이선스 미결이라 드라이브로 따로 공유한다 (.json 모델 카드는 커밋)
+backend/models/*.pt
+backend/*.pt
+# .env 사본(비밀값 포함) — 고치기 전 사본 규칙 *.bak-YYYYMMDD-HHMM
+*.bak-*
+# 프론트엔드
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+# 학습 데이터·결과 (scripts/train) — 개인정보·라이선스 때문에 커밋 금지
+datasets/
+runs/
+# 외부 서비스 시연(partner) 비밀값
+partner/.secrets
+# 실행 로그·키 원문(backend/.logs/ADMIN_KEY.txt)·임시 파일
+.logs/
+*.tmp
+# Claude 워크트리·전체 압축 백업(비밀값 포함)
+.claude/worktrees/
+project2610-full-*.zip

@@ -1,0 +1,11 @@
+{
+  "repo_url": "local:scripts/train (base yolov8n, CrowdHuman val 4,370장, head 1클래스)",
+  "commit_hash": "weights-sha256:d740367868d50137",
+  "weights_file": "head_crowdhuman_n1280.pt",
+  "license": "AGPL-3.0(YOLOv8) + CrowdHuman CC BY-NC 4.0 — 운영 사용 가부 발주 측 확인 필요",
+  "required_versions": "ultralytics>=8.4, torch>=2.1, imgsz 1280",
+  "contract_check_result": "adapter",
+  "detector_kind": "yolov8",
+  "fetched_at": "2026-09-29T07:24:00",
+  "training": {"epochs_done": 28, "best_epoch": 26, "map50": 0.787, "count_mae_crowdhuman_test": 4.91, "count_conf_min": 0.2, "applied": "2026-09-29 17:20 KST (T111)"}
+}
