@@ -1,0 +1,1516 @@
+openapi: 3.1.0
+info:
+  title: 대전 대중교통 비식별 군중 밀집도·잔여 공간 진단 API
+  version: 1.1.0   # R22 — capacity·over_capacity·persons_sum·count_conf_min 추가 (하위 호환)
+  description: |
+    관제 영상 프레임 1장을 입력받아 개인 식별 없이 ROI 내 점유율·잔여 탑승 가능 비율·혼잡 등급을 진단하고,
+    운행 정보와 연계해 후속 차량 여유도를 안내한다. 모든 응답은 통계적 추정치이며(`notice`), 판독 기준 미달 시
+    확정값 대신 `warnings` 와 `crowding_level: uncertain` 을 반환한다.
+    필드명은 design/cv_ddl.sql 의 컬럼명과 같다. 게이트 → 상태코드 대응은 research.md R7.
+    2026-09-29 (SAD) — 구현에 이미 있는 경로를 계약에 옮김(하위 호환, 버전 유지): 이용자 조회 `/v1/reference/*`·`/v1/auth/whoami`(T095),
+    노선·정류장 찾기·버스 번호 조회 `/v1/vehicles/{vehicle_id}`(T099), 시연 차량 재연결 `/v1/admin/demo/bis-remap`(T097),
+    `persons_sum`·`capacity`(NextVehicleItem, T099)·`CameraStatus.capacity`(T091), `source_status: rate_limited`(T101).
+    2026-09-29 — 카메라 전원 관리(S2b): `/v1/admin/camera-power`, `/v1/admin/cameras/{camera_id}/power`·`/operation`, `CameraStatus.powered`, 꺼진 카메라 진단 409 G4 `CAMERA_POWER_OFF`.
+servers:
+  - url: http://localhost:8000
+security:
+  - ApiKey: []
+tags:
+  - name: diagnosis
+    description: UC1·UC4·UC10 진단·실측 (연계 시스템·본 웹서비스)
+  - name: next-vehicle
+    description: UC2 후속 차량 여유도
+  - name: readiness
+    description: UC9 준비 상태
+  - name: admin
+    description: UC6·7·8·11·12 기준 정보·정책 (운영 관리자, X-Admin-Key)
+  - name: guide
+    description: UC15 API 활용 안내
+  - name: auth
+    description: 회원가입·로그인·내 API 키 (RBAC — 역할은 유스케이스 액터). 사이트·API 는 로그인(또는 승인된 키)해야 쓴다. 가입하면 바로 일반 사용자, API 키는 신청 → 운영 관리자 승인 뒤 사용 (T108)
+  - name: web
+    description: 본 웹서비스 화면용 — 규격 밖 사진·영상을 규격으로 바꿔 진단·실측, 시연 샘플 (호출 키)
+  - name: reference
+    description: 이용자 조회 (호출 키, 읽기 전용 — T095·T099). 변경은 모두 /v1/admin/* (관리자 키)
+
+paths:
+  /v1/readiness:
+    get:
+      tags: [readiness]
+      summary: 준비 상태 확인 (UC9, G0)
+      security: []
+      responses:
+        "200":
+          description: 준비 상태
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+
+  /v1/diagnose:
+    post:
+      tags: [diagnosis]
+      summary: 현재 프레임 잔여 공간 진단 (UC1, UC5 포함, UC3 확장)
+      description: |
+        multipart 로 프레임 1장을 제출한다. 정의되지 않은 필드가 포함되면 422.
+        규격: JPEG/PNG, 320×240 ~ 4096×4096, ≤ 10 MB (research R4).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/DiagnoseRequest" }
+      responses:
+        "200":
+          description: 진단 결과. 판독 불확실(G6)·산출 불가(G7)도 200 + 상태 필드
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Assessment" }
+        "404": { $ref: "#/components/responses/CameraNotFound" }
+        "409": { $ref: "#/components/responses/RoiMissing" }
+        "422": { $ref: "#/components/responses/SpecRejected" }
+        "503": { $ref: "#/components/responses/NotReady" }
+
+  /v1/diagnose/batch:
+    post:
+      tags: [diagnosis]
+      summary: 사전 녹화 프레임 일괄 검증 (UC4)
+      description: 프레임 N장(≤ 20)을 제출 순서대로 진단한다. 규격 위반 프레임은 그 프레임만 반려된다(research R14).
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/BatchDiagnoseRequest" }
+      responses:
+        "200":
+          description: 프레임별 결과 (제출 순서)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchResult" }
+        "404": { $ref: "#/components/responses/CameraNotFound" }
+        "409": { $ref: "#/components/responses/RoiMissing" }
+        "422": { $ref: "#/components/responses/SpecRejected" }
+        "503": { $ref: "#/components/responses/NotReady" }
+
+  /v1/measurements:
+    post:
+      tags: [diagnosis]
+      summary: 후속 차량 실측 등록 (UC10)
+      description: 차량 식별자가 지정된 차내 프레임을 UC1 과 동일하게 진단해 카메라 최신 실측으로 보관하고 차량 단위로 합산한다.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/MeasurementRequest" }
+      responses:
+        "200":
+          description: 진단 결과 + 실측 등록 상태
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeasurementResult" }
+        "404": { $ref: "#/components/responses/CameraNotFound" }
+        "409":
+          description: G4 ROI 미등록 또는 G10 매핑 없음·차내 유형 아님
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GateError" }
+        "422": { $ref: "#/components/responses/SpecRejected" }
+        "503": { $ref: "#/components/responses/NotReady" }
+
+  /v1/measurements/batch:
+    post:
+      tags: [diagnosis]
+      summary: 시연용 사전 촬영 프레임 일괄 등록 (UC10 A4, P8 8.3)
+      security:
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/MeasurementBatchRequest" }
+      responses:
+        "200":
+          description: 프레임별 실측 등록 결과 (제출 순서, 개별 실패 격리). 시연 모드가 꺼져 있으면 `demo_mode:false` 와 함께 각 항목이 즉시 만료(G14)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  demo_mode: { type: boolean }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/MeasurementBatchItem" }
+        "422": { $ref: "#/components/responses/SpecRejected" }
+        "503": { $ref: "#/components/responses/NotReady" }
+
+  /v1/next-vehicle:
+    get:
+      tags: [next-vehicle]
+      summary: 후속 차량 여유도 조회 (UC2)
+      parameters:
+        - { name: route_id, in: query, required: true, schema: { type: string } }
+        - { name: stop_id, in: query, required: true, schema: { type: string }, description: 정류장 또는 역·승강장 식별자 }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 5, default: 3 }, description: 반환할 도착 차량 수 (SD_02 §16 6) }
+      responses:
+        "200":
+          description: "차량별 여유도. 연계 장애(G12)는 `basis_type: unavailable` 로 200"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NextVehicleResponse" }
+        "404":
+          description: G11 노선·정류장 기준 정보 없음
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GateError" }
+        "503": { $ref: "#/components/responses/NotReady" }
+
+  /v1/vehicles/{vehicle_id}:
+    get:
+      tags: [reference]
+      summary: 버스 번호로 상태 조회 — 그 버스의 최신 유효 실측(인원/정원·혼잡). 없거나 만료면 no_measurement (UC2, T099)
+      description: G13 판정은 v_vehicle_measurement_status 한 곳. 추정하지 않는다(BR-CV-13).
+      parameters: [ { name: vehicle_id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: 차량 상태, content: { application/json: { schema: { $ref: "#/components/schemas/VehicleStatus" } } } }
+
+  # ----------------------------------------------------------------- reference (이용자 조회, 호출 키 — T095·T099)
+  /v1/auth/whoami:
+    get:
+      tags: [reference]
+      summary: 호출 주체 확인 — role admin(관리자 키) | caller(호출 키). 웹 «관리자 로그인»용 (G1, T095)
+      parameters:
+        - { name: X-Admin-Key, in: header, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: 호출 주체
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  caller_id: { type: string }
+                  role: { type: string, enum: [admin, caller] }
+        "401": { description: "G1 AUTH_MISSING — X-API-Key 없음", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+        "403": { description: "G1 AUTH_INVALID — 유효하지 않은 키", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/reference/cameras:
+    get:
+      tags: [reference]
+      summary: 카메라 목록·현재 정원 (이용자 조회)
+      responses:
+        "200": { description: 카메라 목록, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CameraStatus" } } } } }
+  /v1/reference/cameras/{camera_id}:
+    get:
+      tags: [reference]
+      summary: 카메라 현황 (이용자 조회)
+      parameters: [ { name: camera_id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: 현황, content: { application/json: { schema: { $ref: "#/components/schemas/CameraStatus" } } } }
+        "404": { $ref: "#/components/responses/CameraNotFound" }
+  /v1/reference/cameras/{camera_id}/roi:
+    get:
+      tags: [reference]
+      summary: 현재 ROI (이용자 조회 — 화면 윤곽 표시용)
+      parameters: [ { name: camera_id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: 현재 ROI 판본, content: { application/json: { schema: { $ref: "#/components/schemas/Roi" } } } }
+        "404": { description: "G4 ROI_MISSING — 등록된 관심영역 없음 (조회 경로라 404)", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/reference/threshold:
+    get:
+      tags: [reference]
+      summary: 현재 등급 기준·인원 세기 기준 (이용자 조회)
+      responses:
+        "200":
+          description: 현재 등급 기준
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id: { type: integer }
+                  free_min_ratio: { type: number }
+                  crowded_max_ratio: { type: number }
+                  count_conf_min: { type: number, nullable: true }
+                  count_conf_min_effective: { type: number, description: "실제로 쓰는 인원 세기 기준 — 판본 값이 비면 서버 설정 기본값(모델에 맞춘 값). 2026-09-30" }
+                  effective_from: { type: string, format: date-time }
+        "404": { description: "G8 NO_THRESHOLD_POLICY — 등급 기준 없음", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/reference/ops-status:
+    get:
+      tags: [reference]
+      summary: 운영 상태 요약 (S0 — 이용자 조회, /v1/admin/ops-status 와 같은 값)
+      responses:
+        "200": { description: 운영 상태, content: { application/json: { schema: { $ref: "#/components/schemas/OpsStatus" } } } }
+  /v1/reference/routes:
+    get:
+      tags: [reference]
+      summary: 노선 목록·검색 — '102' → route_id 30300037 (이용자 조회, T099)
+      description: 운행 정보 공급자가 bis 면 BIS 적재 노선만(route.source = 'BIS'), 아니면 시연 고정 노선. 최대 300건, 노선 번호 순.
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string, maxLength: 40 }, description: 노선 이름 부분 일치 또는 route_id 정확 일치 }
+      responses:
+        "200":
+          description: 노선 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    route_id: { type: string }
+                    route_name: { type: string }
+                    mode: { type: string }
+                    route_no: { type: string, description: "route_name 에서 '(ROUTE_CD)' 를 뗀 표시용 번호 — 예: 102번" }
+  /v1/reference/stops/{stop_id}/routes:
+    get:
+      tags: [reference]
+      summary: 정류장에 서는 노선 — 같은 정류소에 서는 버스 번호만, 노선마다 그 노선의 stop_id (이용자 조회, T109)
+      description: BIS 정류장 ID 는 `노선ID:정류소ID` — 정류소 ID 가 같은(같은 방향) 정류장의 노선을 준다. 정류소 ID 가 없는 자료는 같은 이름으로 묶는다.
+      parameters:
+        - { name: stop_id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: 노선 목록 (노선 번호 순)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    route_id: { type: string }
+                    route_no: { type: string }
+                    route_name: { type: string }
+                    stop_id: { type: string, description: 이 노선에서의 정류장 ID — next-vehicle 에 넣는다 }
+                    stop_name: { type: string }
+        "401": { description: "G1 AUTH_MISSING — 로그인·승인된 키 없음", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+        "404": { description: "G3 STOP_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/reference/stops:
+    get:
+      tags: [reference]
+      summary: 정류장 목록·이름 검색 — route_id 의 정류장, 또는 q 로 노선 전체에서 (이용자 조회, T099)
+      description: 이름 검색은 방향 표시 "(○○ 방면)" 를 뺀 정류장 자체 이름으로만 맞춘다. 같은 이름 양방향 정류장은 "(다음 정류장 방면)" 으로 구분.
+      parameters:
+        - { name: route_id, in: query, required: false, schema: { type: string } }
+        - { name: q, in: query, required: false, schema: { type: string, maxLength: 40 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500, default: 200 } }
+      responses:
+        "200":
+          description: 정류장 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    stop_id: { type: string }
+                    route_id: { type: string }
+                    route_name: { type: string }
+                    stop_name: { type: string }
+                    route_no: { type: string }
+        "422": { description: "G2 QUERY_REQUIRED — route_id 또는 q 중 하나는 필요", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+
+  # ----------------------------------------------------------------- admin
+  /v1/admin/cameras:
+    get:
+      tags: [admin]
+      summary: 카메라 목록·현황 (S2·S5·S6 — 현재 정원 포함)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 카메라 목록, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CameraStatus" } } } } }
+    post:
+      tags: [admin]
+      summary: 카메라 등록 (research R9 — G3 해제 경로)
+      security: [ { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CameraCreate" }
+      responses:
+        "201": { description: 등록됨, content: { application/json: { schema: { $ref: "#/components/schemas/CameraStatus" } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/admin/cameras/{camera_id}:
+    get:
+      tags: [admin]
+      summary: 카메라 현황 (S2 2.1 — v_camera_readiness)
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: camera_id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: 현황, content: { application/json: { schema: { $ref: "#/components/schemas/CameraStatus" } } } }
+        "404": { $ref: "#/components/responses/CameraNotFound" }
+
+  /v1/admin/cameras/{camera_id}/roi:
+    get:
+      tags: [admin]
+      summary: 현재 ROI 와 이력 (UC6)
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: camera_id, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: ROI 판본 목록, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Roi" } } } } }
+    post:
+      tags: [admin]
+      summary: ROI 등록·수정 (UC6, G8) — 새 판본 생성, roi_stale 해제
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: camera_id, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoiCreate" }
+      responses:
+        "201": { description: 등록됨, content: { application/json: { schema: { $ref: "#/components/schemas/Roi" } } } }
+        "404": { $ref: "#/components/responses/CameraNotFound" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/admin/camera-power:
+    get:
+      tags: [admin]
+      summary: 카메라 전원 관리 표 (S2b) — 호선·차량·칸·운행·정원·인원·밀집도·동작여부
+      description: |
+        동작여부 = off(꺼짐) / normal(켜짐 + 최근 5분 진단) / offline. 운행 상태 = 연결 차량이 최근 10분 BIS 도착 정보에 있으면 running.
+        밀집도 = 최근 진단 인원 ÷ 정원 (R22, 정원 없으면 null). 모두 저장하지 않는 유도값이며 통계적 추정치.
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200":
+          description: 카메라별 행
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/CameraPowerRow" } }
+        "401": { description: 관리자 키 없음 (G1) }
+  /v1/admin/cameras/{camera_id}/power:
+    post:
+      tags: [admin]
+      summary: 카메라 전원 켜기·끄기 (S2b)
+      description: |
+        기본은 꺼짐. 꺼진 카메라의 진단 요청(단건·일괄·실측·웹)은 409 G4 `CAMERA_POWER_OFF`. 켜면 서버가 `poll_interval_s` 마다
+        `frame_source` 에서 1장을 불러와 진단한다(프레임 저장 없음, FR-11). 켜면 열린 G4 이벤트를 해제한다.
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: camera_id, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CameraPowerSet" }
+      responses:
+        "200":
+          description: 바뀐 행
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CameraPowerRow" }
+        "404": { description: 등록된 카메라가 아님 (G3) }
+  /v1/admin/cameras/{camera_id}/operation:
+    patch:
+      tags: [admin]
+      summary: 카메라 운영 설정 (S2b) — 칸·프레임 소스·진단 주기
+      description: 보낸 필드만 바꾼다. `frame_source` 빈 문자열 = 자동 진단 소스 지움. 형식이 틀리면 422 G8 `FRAME_SOURCE_INVALID`.
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: camera_id, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CameraOperationUpdate" }
+      responses:
+        "200":
+          description: 바뀐 행
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CameraPowerRow" }
+        "404": { description: 등록된 카메라가 아님 (G3) }
+        "422": { description: 값 검증 (G8) }
+  /v1/admin/vehicle-types/{vehicle_type_id}/spec:
+    post:
+      tags: [admin]
+      summary: 차량 제원 등록·수정 (UC7, G8)
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: vehicle_type_id, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VehicleSpecCreate" }
+      responses:
+        "201": { description: 등록됨, content: { application/json: { schema: { $ref: "#/components/schemas/VehicleSpec" } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/admin/policies/threshold:
+    get:
+      tags: [admin]
+      summary: 현재 등급 기준과 이력 (UC8)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 정책 목록, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ThresholdPolicy" } } } } }
+    post:
+      tags: [admin]
+      summary: 등급 경계 조정 (UC8, G8 — 적용 시작일은 미래)
+      security: [ { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ThresholdPolicyCreate" }
+      responses:
+        "201": { description: 등록됨, content: { application/json: { schema: { $ref: "#/components/schemas/ThresholdPolicy" } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/admin/policies/validity:
+    get:
+      tags: [admin]
+      summary: 현재 유효 시간 규칙·시연 모드·노선별 미리보기 (UC11)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 규칙 + 미리보기, content: { application/json: { schema: { $ref: "#/components/schemas/ValidityPolicyView" } } } }
+    post:
+      tags: [admin]
+      summary: 유효 시간 규칙·시연 모드 설정 (UC11 A2, G8) — 새 판본, 즉시 적용
+      security: [ { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ValidityPolicyCreate" }
+      responses:
+        "201": { description: 등록됨, content: { application/json: { schema: { $ref: "#/components/schemas/ValidityPolicyView" } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/admin/mappings:
+    get:
+      tags: [admin]
+      summary: 활성 매핑 목록 (UC12, S8 8.1)
+      security: [ { AdminKey: [] } ]
+      parameters:
+        - { name: vehicle_id, in: query, required: false, schema: { type: string } }
+        - { name: camera_id, in: query, required: false, schema: { type: string } }
+      responses:
+        "200": { description: 매핑 목록, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Mapping" } } } } }
+    post:
+      tags: [admin]
+      summary: 카메라·차량 식별자 매핑 등록 (UC12, G9)
+      security: [ { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MappingCreate" }
+      responses:
+        "201": { description: 저장됨, content: { application/json: { schema: { $ref: "#/components/schemas/Mapping" } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/admin/mappings/{map_id}:
+    delete:
+      tags: [admin]
+      summary: 매핑 해제 (UC12 A3) — 해당 차량 실측은 실측 없음
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: map_id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        "204": { description: 해제됨 }
+  /v1/admin/mappings/csv:
+    post:
+      tags: [admin]
+      summary: CSV 일괄 등록 (UC12 A1) — 첫 행 열 이름, 필수 camera_id·vehicle_id, 선택 vehicle_type, UTF-8
+      security: [ { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200": { description: 행별 결과, content: { application/json: { schema: { $ref: "#/components/schemas/CsvResult" } } } }
+        "422": { description: 필수 열 누락·파일 손상 (G9 E5), content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/admin/fleet:
+    get:
+      tags: [admin]
+      summary: 운행 정보 차량 목록 (UC12 2단계 자동완성)
+      security: [ { AdminKey: [] } ]
+      parameters:
+        - { name: route_id, in: query, required: true, schema: { type: string } }
+        - { name: q, in: query, required: false, schema: { type: string } }
+      responses:
+        "200": { description: "차량 목록 (연계 장애면 `source_status: unavailable`)", content: { application/json: { schema: { $ref: "#/components/schemas/FleetList" } } } }
+
+  /v1/admin/verification-runs:
+    post:
+      tags: [admin]
+      summary: 정확도 판정 (UC4 6단계, P4 4.7) — 일괄 결과와 수작업 측정값으로 SC-01·02 계산
+      security: [ { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerificationRunCreate" }
+      responses:
+        "201": { description: 판정, content: { application/json: { schema: { $ref: "#/components/schemas/VerificationRun" } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  /v1/admin/demo/bis-remap:
+    post:
+      tags: [admin]
+      summary: 시연 카메라를 지금 도착 예정인 BIS 차량으로 다시 연결 (T097, S8)
+      description: |
+        정류장 도착 예정 순 앞 N대(N = 카메라 수)가 목표. 이미 그중 한 대에 연결된 카메라는 그대로, 나머지는 매핑 해제(UC12 A3)
+        후 남은 목표 차량에 연결(G9 운행 정보 검증). 도착 정보 없음·연계 장애면 아무것도 바꾸지 않는다(changed 0). 멱등.
+      security: [ { AdminKey: [] } ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DemoRemapRequest" }
+      responses:
+        "200":
+          description: 재연결 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  route_id: { type: string }
+                  stop_id: { type: string }
+                  source_status: { type: string }
+                  changed: { type: integer }
+                  message: { type: string }
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        camera_id: { type: string }
+                        before: { type: string, nullable: true }
+                        after: { type: string, nullable: true }
+                        expected_arrival_at: { type: string, nullable: true }
+                        action: { type: string }
+
+  /v1/admin/ops-status:
+    get:
+      tags: [admin]
+      summary: 운영 상태 (S0 — P0 산출물)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 준비·시연·roi_stale·만료, content: { application/json: { schema: { $ref: "#/components/schemas/OpsStatus" } } } }
+
+  /v1/admin/gate-events:
+    get:
+      tags: [admin]
+      summary: 열린 게이트 이벤트 (C2). requested_only=true 면 S1 '받은 요청' (C7, 결정 D10)
+      security: [ { AdminKey: [] } ]
+      parameters:
+        - { name: subject_kind, in: query, required: false, schema: { type: string } }
+        - { name: subject_id, in: query, required: false, schema: { type: string } }
+        - { name: requested_only, in: query, required: false, schema: { type: boolean, default: false }, description: «요청 보내기»가 된 미해제 이벤트만 (요청 시각 역순) }
+      responses:
+        "200": { description: 이벤트 목록, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/GateEvent" } } } } }
+  /v1/gate-events/{event_id}/request:
+    post:
+      tags: [diagnosis]
+      summary: 운영 관리자에게 해제 요청 보내기 (C7, U5)
+      parameters: [ { name: event_id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        "200": { description: 요청 기록됨, content: { application/json: { schema: { $ref: "#/components/schemas/GateEvent" } } } }
+        "409": { description: 해제 주체가 본인인 게이트 (요청 불가), content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+
+  # ----------------------------------------------------------------- guide
+  /v1/api-guide:
+    get:
+      tags: [guide]
+      summary: API 활용 안내 (UC15) — 카탈로그·가이드라인·매뉴얼·모델 카드
+      security: []
+      responses:
+        "200":
+          description: 안내 (준비 중이어도 열람 가능. 시험 호출은 각 엔드포인트가 G0 로 차단)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiGuide" }
+
+
+  # ----------------------------------------------------------------- web (본 웹서비스 화면용 — 규격 밖 사진·영상 변환, 호출 키)
+  /v1/web/diagnose:
+    post:
+      tags: [web]
+      summary: 사진 진단 — 규격 밖(HEIC·WebP·큰 사진)이면 JPEG·긴 변 1920px 이하로 바꿔 진단 (웹 화면용)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [camera_id, file]
+              properties:
+                camera_id: { type: string }
+                file: { type: string, format: binary, description: "사진 50MB 이하. 짧은 변 240px 미만은 키우지 않고 반려" }
+                captured_at: { type: string, format: date-time }
+      responses:
+        "200": { description: "Assessment + normalization(무엇을 바꿨는지)", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/web/measurements:
+    post:
+      tags: [web]
+      summary: 후속 차량 실측 — 규격 밖 사진이면 바꿔 /v1/measurements 로 (웹 화면용)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [vehicle_id, camera_id, file]
+              properties:
+                vehicle_id: { type: string }
+                camera_id: { type: string }
+                file: { type: string, format: binary }
+                captured_at: { type: string, format: date-time }
+      responses:
+        "200": { description: "MeasurementResult + normalization", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/web/diagnose-video:
+    post:
+      tags: [web]
+      summary: 영상 진단 — 간격마다(또는 at_s 한 장) 프레임을 뽑아 진단, 시각별 결과·평활값·요약 (웹 화면용)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [camera_id, file]
+              properties:
+                camera_id: { type: string }
+                file: { type: string, format: binary, description: 영상 500MB 이하 }
+                interval_s: { type: number, minimum: 0.5, description: "기본 2초, 최대 60장(넘으면 간격을 넓힘)" }
+                at_s: { type: number, description: 이 시각 한 장만 }
+                started_at: { type: string, format: date-time, description: 영상 시작 시각 — 프레임마다 더해 촬영 시각으로 }
+      responses:
+        "200": { description: "video 정보, items(t·status·assessment·smoothed_vacant_ratio), summary", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/web/samples:
+    get:
+      tags: [web]
+      summary: 시연용 자유 이용 샘플 사진·영상 목록 (웹 화면용)
+      responses:
+        "200": { description: 샘플 목록(file·title·description·source_url·license·author), content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+  /v1/web/samples/{file}:
+    get:
+      tags: [web]
+      summary: 샘플 파일 내려받기 — 목록에 있는 파일만
+      parameters: [ { name: file, in: path, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: 파일 내용 }
+        "404": { description: 목록에 없는 파일 }
+
+  # ----------------------------------------------------------------- admin (운영 상태·모델·연동 — 관리자 키)
+  /v1/admin/audit:
+    get:
+      tags: [admin]
+      summary: 집계 기록 (FR-17, v_audit_record — 개인 정보 없음)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 집계 기록 행, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+  /v1/admin/quality-metrics:
+    get:
+      tags: [admin]
+      summary: 운영 지표 (P0 0.2 — 시간대·조도별 신뢰도)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 지표 행, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+  /v1/admin/detector:
+    get:
+      tags: [admin]
+      summary: 검출기 적재 상태 (종류·모델·적재 소요·웜업 시각·마지막 추론 ms)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 검출기 상태, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+  /v1/admin/detector/preload:
+    post:
+      tags: [admin]
+      summary: 검출기 (재)적재·웜업
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 적재 결과, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+  /v1/admin/integrations:
+    get:
+      tags: [admin]
+      summary: 웹서비스 연동 목록 (P1 1.5)
+      security: [ { AdminKey: [] } ]
+      responses:
+        "200": { description: 연동 목록, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+    post:
+      tags: [admin]
+      summary: 웹서비스 연동 등록 (P1 1.5) — G0 통과 후
+      security: [ { AdminKey: [] } ]
+      responses:
+        "201": { description: 등록됨, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "503": { description: "G0 준비 중 — 연동 등록 불가", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/admin/integrations/{integration_id}/test:
+    post:
+      tags: [admin]
+      summary: 연동 시험 호출 (P1 1.6, G16)
+      security: [ { AdminKey: [] } ]
+      parameters: [ { name: integration_id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        "200": { description: 시험 결과(첫 응답 ms·상태), content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+
+  # ----------------------------------------------------------------- auth (회원가입·로그인·내 API 키 — RBAC, T107)
+  /v1/auth/signup:
+    post:
+      tags: [auth]
+      summary: 회원가입 — 바로 일반 사용자로 로그인 (API 키는 따로 신청 → 운영 관리자 승인)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [login_id, name, password]
+              properties:
+                login_id: { type: string, minLength: 3, maxLength: 40, description: "영문 소문자·숫자로 시작, 소문자·숫자·. _ -" }
+                name: { type: string, maxLength: 60 }
+                password: { type: string, minLength: 8, maxLength: 128 }
+                org: { type: string, maxLength: 80 }
+                email: { type: string, maxLength: 120 }
+      responses:
+        "201": { description: "만든 계정 (role=user, status=active)", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "422": { description: "입력 검증 실패·LOGIN_ID_TAKEN", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      summary: 로그인 — Bearer 토큰(12시간)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [login_id, password], properties: { login_id: { type: string }, password: { type: string } } }
+      responses:
+        "200": { description: "token·expires_at·account", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { description: "G1 LOGIN_FAILED", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+        "403": { description: "G1 ACCOUNT_DISABLED(정지)", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/auth/roles:
+    get:
+      tags: [auth]
+      summary: 역할·권한 표 (RBAC — 유스케이스 액터 기준)
+      security: []
+      responses:
+        "200": { description: "roles(역할 → 이름)·permissions(권한 → 역할)", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: 로그아웃 — 토큰 폐기
+      security: [ { BearerAuth: [] } ]
+      responses:
+        "204": { description: 폐기됨 }
+        "401": { description: "G1 LOGIN_REQUIRED·SESSION_INVALID", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/auth/me:
+    get:
+      tags: [auth]
+      summary: 내 계정·역할·권한
+      security: [ { BearerAuth: [] } ]
+      responses:
+        "200": { description: "login_id·name·role·role_label·permissions", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "401": { description: "G1 LOGIN_REQUIRED·SESSION_INVALID", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/auth/keys:
+    get:
+      tags: [auth]
+      summary: 내 API 키 목록 (원문 없음 — 앞자리·상태 pending/active/rejected·마지막 사용)
+      security: [ { BearerAuth: [] } ]
+      responses:
+        "200": { description: 키 목록, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+        "403": { description: "G1 ROLE_FORBIDDEN — 일반 사용자·운영 관리자만", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+    post:
+      tags: [auth]
+      summary: API 키 신청 — cvk_… 원문은 이 응답에서 한 번만, 운영 관리자 승인 뒤 사용 (연계 시스템마다 하나)
+      security: [ { BearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [name], properties: { name: { type: string, maxLength: 40, description: 연계 시스템 이름 } } }
+      responses:
+        "201": { description: "key(원문)·key_id·key_prefix·name·status(pending — 운영 관리자 본인은 active)·created_at", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "403": { description: "G1 ROLE_FORBIDDEN·ACCOUNT_DISABLED", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/auth/keys/{key_id}:
+    delete:
+      tags: [auth]
+      summary: 내 API 키 폐기 — 즉시 거부된다
+      security: [ { BearerAuth: [] } ]
+      parameters: [ { name: key_id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        "204": { description: 폐기됨 }
+        "404": { description: "G3 KEY_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+
+  # ----------------------------------------------------------------- admin (계정·키 관리 — 운영 관리자)
+  /v1/admin/accounts:
+    get:
+      tags: [admin]
+      summary: 계정 목록 (status 로 거르기)
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      parameters: [ { name: status, in: query, required: false, schema: { type: string, enum: [pending, active, disabled] } } ]
+      responses:
+        "200": { description: "계정(비밀번호 없음)·active_keys", content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+    post:
+      tags: [admin]
+      summary: 계정 만들기 (관제 담당자·운영 관리자 등 — 바로 사용)
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [login_id, name, password, role], properties: { login_id: { type: string }, name: { type: string }, password: { type: string, minLength: 8 }, role: { type: string, enum: [admin, controller, user] }, org: { type: string }, email: { type: string } } }
+      responses:
+        "201": { description: 만든 계정(status=active), content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+  /v1/admin/accounts/{account_id}:
+    patch:
+      tags: [admin]
+      summary: 정지(status=disabled — 세션 끊김·키 거부)·해제(active)·역할 변경
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      parameters: [ { name: account_id, in: path, required: true, schema: { type: integer } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: { role: { type: string, enum: [admin, controller, user] }, status: { type: string, enum: [pending, active, disabled] } } }
+      responses:
+        "200": { description: 바뀐 계정, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "404": { description: "G3 ACCOUNT_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/admin/accounts/{account_id}/changes:
+    get:
+      tags: [admin]
+      summary: 계정 역할·상태 변경 이력 — 누가 언제 무엇을 바꿨는지 (최신 순, 2026-09-30)
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      parameters: [ { name: account_id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        "200": { description: "변경 이력 (field role|status, old_value — 생성 때 null, new_value, changed_at, changed_by)", content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+        "404": { description: "G3 ACCOUNT_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/admin/api-keys:
+    get:
+      tags: [admin]
+      summary: API 키 전체 (원문 없음). status=pending 이면 승인 대기
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      parameters: [ { name: status, in: query, required: false, schema: { type: string, enum: [pending, active, rejected] } } ]
+      responses:
+        "200": { description: "키(앞자리·소유자·상태·승인자·마지막 사용·폐기)", content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+  /v1/admin/api-keys/{key_id}:
+    patch:
+      tags: [admin]
+      summary: API 키 승인(status=active)·반려(rejected)
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      parameters: [ { name: key_id, in: path, required: true, schema: { type: integer } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [status], properties: { status: { type: string, enum: [active, rejected] } } }
+      responses:
+        "200": { description: 바뀐 키(원문 없음), content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "404": { description: "G3 KEY_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+        "409": { description: "G4 KEY_REVOKED — 폐기된 키", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+    delete:
+      tags: [admin]
+      summary: API 키 폐기 (운영 관리자)
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      parameters: [ { name: key_id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        "204": { description: 폐기됨 }
+        "404": { description: "G3 KEY_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/admin/rbac:
+    get:
+      tags: [admin]
+      summary: 권한 매트릭스 (S10) — 역할×기능 유효 권한·기본값·잠긴 칸, 마지막 변경
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      responses:
+        "200": { description: "roles[{role,label,locked}], permissions[{permission,label,roles,default_roles,locked_roles}], changed_cells, updated_at, updated_by", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+    put:
+      tags: [admin]
+      summary: 권한 매트릭스 저장 (S10) — 권한마다 허용 역할 전체, 기본값과 다른 칸만 남는다
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [permissions]
+              properties:
+                permissions: { type: object, additionalProperties: { type: array, items: { type: string, enum: [user, integration, webservice, controller, admin] } } }
+      responses:
+        "200": { description: 저장 후 매트릭스(GET 과 같은 모양), content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "422": { description: "G2 RBAC_UNKNOWN 정의되지 않은 권한·역할 / RBAC_LOCKED 잠긴 칸 변경", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: 연계 시스템 식별 (FR-16) — 운영 관리자가 승인한 cvk_ 키(승인 전 403 KEY_PENDING·반려 403 KEY_REJECTED) 또는 서버 설정 호출 키. 정보 차등 없음
+    AdminKey:
+      type: apiKey
+      in: header
+      name: X-Admin-Key
+      description: 운영 관리자 (G1)
+
+  responses:
+    NotReady:
+      description: G0 준비 중 / 진단 불가, G5 모델 불가
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/GateError" }
+    CameraNotFound:
+      description: G3 등록되지 않은 카메라
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/GateError" }
+    RoiMissing:
+      description: G4 ROI 미등록
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/GateError" }
+    SpecRejected:
+      description: G2 요청 규격 외 — 진단 없이 반려. 허용 규격 명시 (FR-02)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/GateError" }
+    ValidationFailed:
+      description: G8/G9 값 검증 실패 — 행별 사유
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/GateError" }
+
+  schemas:
+    Readiness:
+      type: object
+      required: [readiness, updated_at]
+      properties:
+        readiness: { type: string, enum: [ready, preparing, unavailable] }
+        updated_at: { type: string, format: date-time }
+        model_commit: { type: string, nullable: true }
+
+    GateError:
+      type: object
+      required: [gate, reason_code, reason, resolver_role]
+      properties:
+        gate: { type: string, example: G4 }
+        reason_code: { type: string, example: ROI_MISSING }
+        reason: { type: string, example: "CAM-S03 에 등록된 관심영역이 없어 진단할 수 없다" }
+        resolver_role: { type: string, enum: [self, operator, external] }
+        allowed_spec:
+          type: object
+          nullable: true
+          description: G2 일 때 허용 규격
+        details:
+          type: array
+          nullable: true
+          items: { type: object }
+        gate_event_id: { type: integer, nullable: true, description: 타인 해제 게이트면 C7 요청에 쓰는 이벤트 ID }
+
+    Warning:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, enum: [blur, low_light, backlight, low_confidence, occlusion, roi_stale, partial_coverage, unknown] }
+        detail: { type: string, nullable: true }
+
+    DiagnoseRequest:
+      type: object
+      additionalProperties: false
+      required: [camera_id, frame]
+      properties:
+        camera_id: { type: string }
+        frame: { type: string, format: binary, description: JPEG/PNG 1장 }
+        captured_at: { type: string, format: date-time, nullable: true }
+
+    Assessment:
+      type: object
+      required: [assessment_id, camera_id, occupied_area_ratio, vacant_capacity_ratio, crowding_level, is_reference_only, mean_confidence, warnings, notice, processed_at, versions]
+      properties:
+        assessment_id: { type: integer }
+        camera_id: { type: string }
+        captured_at: { type: string, format: date-time, nullable: true }
+        occupied_area_ratio: { type: number, minimum: 0, maximum: 100, description: "점유율 % = 인원 ÷ 차량 전체 정원 × 100, 100 상한 (R22). 정원 없으면 0 + 판독 불확실" }
+        vacant_capacity_ratio: { type: number, minimum: 0, maximum: 100, description: 잔여 탑승 가능 비율 % }
+        crowding_level: { type: string, enum: [free, normal, crowded, uncertain] }
+        is_reference_only: { type: boolean, description: "판독 불확실이면 true — 수치는 참고용 (G6)" }
+        person_count: { type: integer, description: "셈에 든 인원 — 검출 신뢰도 ≥ 인원 세기 기준이고 발 위치가 ROI 안 (research R22)" }
+        capacity: { type: integer, nullable: true, description: "차량 전체 정원 (UC7 제원). null 이면 혼잡도 산출 불가 (G7)" }
+        over_capacity: { type: boolean, description: "인원 > 정원 — 점유율은 100% 에서 멈춤 (R22)" }
+        remaining_persons: { type: integer, nullable: true, description: 정원 없으면 null }
+        remaining_not_computable: { type: boolean, description: "정원 미등록 — 산출 불가 (G7)" }
+        mean_confidence: { type: number, minimum: 0, maximum: 1 }
+        warnings: { type: array, items: { $ref: "#/components/schemas/Warning" } }
+        notice: { type: string, description: 통계적 추정치 고지 (FR-10) }
+        processed_at: { type: string, format: date-time }
+        response_ms: { type: integer }
+        versions:
+          type: object
+          description: 재현성(NFR-06)·역추적용 판본
+          properties:
+            roi_id: { type: integer }
+            spec_id: { type: integer, nullable: true }
+            threshold_policy_id: { type: integer }
+            model_commit: { type: string }
+
+    BatchDiagnoseRequest:
+      type: object
+      additionalProperties: false
+      required: [camera_id, frames]
+      properties:
+        camera_id: { type: string }
+        frames:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, format: binary }
+          description: 제출 순서 유지
+
+    BatchResult:
+      type: object
+      required: [batch_id, camera_id, items, consistency]
+      properties:
+        batch_id: { type: integer }
+        camera_id: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [seq, status]
+            properties:
+              seq: { type: integer }
+              status: { type: string, enum: [accepted, rejected] }
+              assessment: { $ref: "#/components/schemas/Assessment" }
+              reject: { $ref: "#/components/schemas/GateError" }
+        consistency:
+          type: object
+          description: 동일 ROI·정원·등급 기준·판독 기준 적용 확인 (BR-CV-12)
+          properties:
+            roi_id: { type: integer }
+            spec_id: { type: integer, nullable: true }
+            threshold_policy_id: { type: integer }
+            frames_discarded: { type: integer }
+            audit_records: { type: integer }
+
+    MeasurementRequest:
+      type: object
+      additionalProperties: false
+      required: [vehicle_id, camera_id, frame]
+      properties:
+        vehicle_id: { type: string, description: BIS 차량 번호 / 편성 번호 (UC12 표기) }
+        camera_id: { type: string }
+        frame: { type: string, format: binary }
+        captured_at: { type: string, format: date-time, nullable: true }
+
+    MeasurementStatus:
+      type: object
+      required: [vehicle_id, vacant_ratio_agg, crowding_level_agg, coverage_num, coverage_den, measured_at, expires_at, applied_validity_minutes, demo_mode]
+      properties:
+        vehicle_id: { type: string }
+        vacant_ratio_agg: { type: number }
+        crowding_level_agg: { type: string, enum: [free, normal, crowded, uncertain] }
+        coverage_num: { type: integer }
+        coverage_den: { type: integer }
+        partial_coverage: { type: boolean }
+        persons_sum: { type: integer, nullable: true, description: "합산 인원 — 카메라별 최신 유효 실측 인원의 합 (R22)" }
+        capacity: { type: integer, nullable: true, description: "차량 전체 정원. vacant_ratio_agg = 100 − persons_sum/capacity×100 (하한 0)" }
+        measured_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        applied_validity_minutes: { type: integer }
+        demo_mode: { type: boolean }
+        already_expired: { type: boolean, description: 촬영 시각이 이미 만료 — 즉시 실측 없음 취급 (UC10 E4) }
+
+    MeasurementResult:
+      type: object
+      required: [assessment, measurement]
+      properties:
+        assessment: { $ref: "#/components/schemas/Assessment" }
+        measurement: { $ref: "#/components/schemas/MeasurementStatus" }
+
+    MeasurementBatchRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            required: [seq, vehicle_id, camera_id, frame]
+            properties:
+              seq: { type: integer }
+              vehicle_id: { type: string }
+              camera_id: { type: string }
+              frame: { type: string, format: binary }
+
+    MeasurementBatchItem:
+      type: object
+      required: [seq, vehicle_id, status]
+      properties:
+        seq: { type: integer }
+        vehicle_id: { type: string }
+        status: { type: string, enum: [accepted, rejected] }
+        result: { $ref: "#/components/schemas/MeasurementResult" }
+        reject: { $ref: "#/components/schemas/GateError" }
+
+    NextVehicleItem:
+      type: object
+      required: [vehicle_id, expected_arrival_at, basis_type]
+      properties:
+        vehicle_id: { type: string, nullable: true }
+        expected_arrival_at: { type: string, format: date-time, nullable: true }
+        basis_type: { type: string, enum: [measured, no_measurement, unavailable], description: 실측 / 실측 없음 / 조회 불가 (BR-CV-13) }
+        vacant_ratio: { type: number, nullable: true }
+        persons_sum: { type: integer, nullable: true, description: 실측 인원 (카메라 합, R22·T099) }
+        capacity: { type: integer, nullable: true, description: "차량 전체 정원 (R22) — 화면 \"30 / 80명\"" }
+        crowding_level: { type: string, nullable: true, enum: [free, normal, crowded, uncertain, null] }
+        measured_at: { type: string, format: date-time, nullable: true }
+        coverage_num: { type: integer, nullable: true }
+        coverage_den: { type: integer, nullable: true }
+        warnings: { type: array, items: { $ref: "#/components/schemas/Warning" } }
+
+    VehicleStatus:
+      description: 버스 번호 조회 (T099) — NextVehicleItem + 만료 시각·시연 여부·안내
+      allOf:
+        - { $ref: "#/components/schemas/NextVehicleItem" }
+        - type: object
+          required: [notice]
+          properties:
+            expires_at: { type: string, format: date-time, nullable: true }
+            demo_mode: { type: boolean, default: false }
+            notice: { type: string }
+
+    DemoRemapRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        route_id: { type: string, default: "30300037", description: 102번 (BIS ROUTE_CD) }
+        stop_id: { type: string, default: "30300037:42620", description: 충남대학교 (홈플러스유성점 방면) }
+        camera_ids: { type: array, items: { type: string }, minItems: 1, maxItems: 10, default: [CAM-DEMO-01, CAM-DEMO-02, CAM-DEMO-03] }
+
+    NextVehicleResponse:
+      type: object
+      required: [route_id, stop_id, place_kind, vehicles, applied_validity_minutes, notice, demo_mode, fetched_at]
+      properties:
+        route_id: { type: string }
+        stop_id: { type: string }
+        place_kind: { type: string, enum: [bus_stop, rail_platform] }
+        vehicles: { type: array, items: { $ref: "#/components/schemas/NextVehicleItem" } }
+        applied_validity_minutes: { type: integer }
+        validity_source: { type: string, enum: [bis, timetable, exception, default, stale] }
+        notice: { type: string }
+        demo_mode: { type: boolean }
+        fetched_at: { type: string, format: date-time }
+        source_status: { type: string, enum: [ok, unavailable, timeout, no_vehicle, rate_limited], description: "G12. rate_limited = BIS 일일 호출 한도 초과(HTTP 429, 5분 호출 중지 — T101). DB arrival_snapshot 에는 unavailable 로 기록" }
+
+    CameraCreate:
+      type: object
+      additionalProperties: false
+      required: [camera_id, place_type]
+      properties:
+        camera_id: { type: string }
+        place_type: { type: string, enum: [platform, bus_in, train_in], description: "승강장 · 버스 차내 · 열차 차내 (train_in — R21-D8)" }
+        route_id: { type: string, nullable: true }
+        stop_id: { type: string, nullable: true }
+        vehicle_type_id: { type: string, nullable: true }
+    CameraStatus:
+      type: object
+      properties:
+        camera_id: { type: string }
+        place_type: { type: string }
+        route_id: { type: string, nullable: true }
+        stop_id: { type: string, nullable: true }
+        vehicle_type_id: { type: string, nullable: true }
+        has_roi: { type: boolean }
+        roi_stale: { type: boolean }
+        has_capacity: { type: boolean }
+        has_mapping: { type: boolean }
+        vehicle_id: { type: string, nullable: true }
+        capacity: { type: integer, nullable: true, description: 현재 정원 (제원 판본) — R22 혼잡도 분모 (T091) }
+        powered: { type: boolean, description: 카메라 전원 (S2b). false 면 진단 요청 거부 (G4 CAMERA_POWER_OFF) }
+
+    CameraPowerSet:
+      type: object
+      additionalProperties: false
+      required: ["on"]
+      properties:
+        "on": { type: boolean }
+
+    CameraOperationUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        car_position: { type: integer, minimum: 1, nullable: true, description: 열차 차내 위치 칸 }
+        frame_source: { type: string, maxLength: 500, nullable: true, description: "스냅샷 URL(http/https) 또는 sample:<샘플 파일>" }
+        poll_interval_s: { type: number, minimum: 1, maximum: 3600, nullable: true, description: 자동 진단 주기 (초) }
+
+    CameraPowerRow:
+      type: object
+      properties:
+        camera_id: { type: string }
+        mode: { type: string, enum: [rail, bus] }
+        place_type: { type: string }
+        route_id: { type: string, nullable: true }
+        route_name: { type: string, nullable: true }
+        vehicle_id: { type: string, nullable: true }
+        car_position: { type: integer, nullable: true }
+        run_state: { type: string, enum: [running, stopped], nullable: true }
+        capacity: { type: integer, nullable: true }
+        persons: { type: integer, nullable: true }
+        density: { type: number, nullable: true, description: 인원 ÷ 정원 (%) }
+        crowding_level: { type: string, nullable: true }
+        last_diagnosed_at: { type: string, nullable: true }
+        powered: { type: boolean }
+        powered_at: { type: string, nullable: true }
+        operation: { type: string, enum: [normal, offline, "off"] }
+        frame_source: { type: string, nullable: true }
+        poll_interval_s: { type: number }
+        last_error: { type: string, nullable: true }
+
+    RoiCreate:
+      type: object
+      additionalProperties: false
+      required: [polygon, effective_from]
+      properties:
+        polygon:
+          type: array
+          minItems: 3
+          items: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
+          description: "[[x,y], ...] 픽셀 좌표"
+        roi_area_m2: { type: number, exclusiveMinimum: 0, nullable: true, description: ROI 의 실제 바닥 면적 (㎡). 발 위치 방식 분모 (R20) }
+        footprint_m2: { type: number, exclusiveMinimum: 0, nullable: true, description: 카메라별 발자국 보정값. 없으면 설정 기본값 0.30 }
+        effective_from: { type: string, format: date-time }
+    Roi:
+      type: object
+      properties:
+        roi_id: { type: integer }
+        camera_id: { type: string }
+        polygon: { type: array, items: { type: array, items: { type: number } } }
+        vertex_count: { type: integer }
+        area: { type: number, description: 픽셀 면적 }
+        roi_area_m2: { type: number, nullable: true }
+        footprint_m2: { type: number, nullable: true }
+        effective_from: { type: string, format: date-time }
+        superseded_at: { type: string, format: date-time, nullable: true }
+        created_by: { type: string }
+
+    VehicleSpecCreate:
+      type: object
+      additionalProperties: false
+      required: [capacity, source, effective_from]
+      properties:
+        capacity: { type: integer, minimum: 1 }
+        seat_count: { type: integer, minimum: 0, nullable: true }
+        source: { type: string }
+        effective_from: { type: string, format: date-time }
+    VehicleSpec:
+      allOf:
+        - $ref: "#/components/schemas/VehicleSpecCreate"
+        - type: object
+          properties:
+            spec_id: { type: integer }
+            vehicle_type_id: { type: string }
+            superseded_at: { type: string, nullable: true }
+            affected_cameras: { type: integer, description: 이 유형에 연결된 카메라 수 }
+
+    ThresholdPolicyCreate:
+      type: object
+      additionalProperties: false
+      required: [free_min_ratio, crowded_max_ratio, effective_from]
+      properties:
+        free_min_ratio: { type: number, minimum: 0, maximum: 100 }
+        crowded_max_ratio: { type: number, minimum: 0, maximum: 100 }
+        effective_from: { type: string, format: date-time }
+        count_conf_min: { type: number, minimum: 0.05, maximum: 0.95, nullable: true, description: "인원 세기 기준 — 이 검출 신뢰도 이상만 센다. 비우면 서버 설정 기본값 COUNT_CONF_MIN (R22)" }
+    ThresholdPolicy:
+      allOf:
+        - $ref: "#/components/schemas/ThresholdPolicyCreate"
+        - type: object
+          properties:
+            policy_id: { type: integer }
+            created_at: { type: string, format: date-time }
+            created_by: { type: string }
+            is_current: { type: boolean }
+            is_scheduled: { type: boolean, description: "적용 시작일이 아직 오지 않은 예약 판본" }
+
+    ValidityPolicyCreate:
+      type: object
+      additionalProperties: false
+      required: [factor, cap_minutes]
+      properties:
+        factor: { type: number, exclusiveMinimum: 0 }
+        cap_minutes: { type: integer, minimum: 1 }
+        default_minutes: { type: integer, minimum: 1, default: 10 }
+        window_minutes: { type: integer, minimum: 1, default: 1 }
+        route_exceptions:
+          type: array
+          items:
+            type: object
+            required: [route_id, minutes]
+            properties:
+              route_id: { type: string }
+              minutes: { type: integer, minimum: 1 }
+        demo_on: { type: boolean, default: false }
+        demo_end_at: { type: string, format: date-time, nullable: true, description: demo_on 이면 필수. 생략 시 켠 시각 + 2시간 }
+    ValidityPolicyView:
+      type: object
+      properties:
+        policy:
+          allOf:
+            - $ref: "#/components/schemas/ValidityPolicyCreate"
+            - type: object
+              properties:
+                policy_id: { type: integer }
+                effective_from: { type: string, format: date-time }
+        preview:
+          type: array
+          description: 노선별 산출 유효 시간 (v_route_validity_minutes)
+          items:
+            type: object
+            properties:
+              route_id: { type: string }
+              headway_minutes: { type: integer, nullable: true }
+              validity_minutes: { type: integer }
+              validity_source: { type: string, enum: [bis, timetable, exception, default, stale] }
+
+    MappingCreate:
+      type: object
+      additionalProperties: false
+      required: [camera_id, vehicle_id]
+      properties:
+        camera_id: { type: string }
+        vehicle_id: { type: string }
+        vehicle_type_id: { type: string, nullable: true }
+    Mapping:
+      type: object
+      properties:
+        map_id: { type: integer }
+        camera_id: { type: string }
+        vehicle_id: { type: string }
+        vehicle_type_id: { type: string, nullable: true }
+        verify_status: { type: string, enum: [verified, unverified, released] }
+        verified_at: { type: string, nullable: true }
+        effective_from: { type: string }
+        input_method: { type: string, enum: [select, csv] }
+        sibling_cameras: { type: array, items: { type: string }, description: 같은 차량의 다른 카메라 }
+    CsvResult:
+      type: object
+      properties:
+        saved: { type: integer }
+        rejected: { type: integer }
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              row: { type: integer }
+              camera_id: { type: string, nullable: true }
+              vehicle_id: { type: string, nullable: true }
+              status: { type: string, enum: [saved, rejected] }
+              reason: { type: string, nullable: true }
+    FleetList:
+      type: object
+      properties:
+        source_status: { type: string, enum: [ok, unavailable, stale] }
+        fetched_at: { type: string, nullable: true }
+        vehicles:
+          type: array
+          items:
+            type: object
+            properties:
+              vehicle_id: { type: string }
+              route_id: { type: string }
+              vehicle_type_id: { type: string, nullable: true }
+
+    VerificationRunCreate:
+      type: object
+      additionalProperties: false
+      required: [batch_id, items]
+      properties:
+        batch_id: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            required: [seq]
+            properties:
+              seq: { type: integer }
+              manual_ratio: { type: number, nullable: true }
+              manual_level: { type: string, nullable: true, enum: [free, normal, crowded, null] }
+    VerificationRun:
+      type: object
+      properties:
+        run_id: { type: integer }
+        batch_id: { type: integer }
+        ratio_match_rate: { type: number }
+        level_match_rate: { type: number }
+        verdict: { type: string, enum: [pass, fail] }
+        versions:
+          type: object
+          properties:
+            threshold_policy_id: { type: integer }
+            roi_id: { type: integer }
+            model_commit: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              seq: { type: integer }
+              vacant_capacity_ratio: { type: number, nullable: true }
+              crowding_level: { type: string, nullable: true }
+              manual_ratio: { type: number, nullable: true }
+              manual_level: { type: string, nullable: true }
+              ratio_diff: { type: number, nullable: true }
+              excluded: { type: boolean }
+
+    OpsStatus:
+      type: object
+      properties:
+        readiness: { $ref: "#/components/schemas/Readiness" }
+        demo_on: { type: boolean }
+        demo_end_at: { type: string, nullable: true }
+        roi_stale_cameras: { type: array, items: { type: string } }
+        expired_measurements_today: { type: integer }
+        bis_calls_today: { type: integer, description: "이 프로세스가 오늘(KST) 보낸 BIS API 호출 수 — 일일 한도 점검" }
+
+    GateEvent:
+      type: object
+      properties:
+        event_id: { type: integer }
+        gate_code: { type: string }
+        screen_code: { type: string }
+        subject_kind: { type: string }
+        subject_id: { type: string }
+        occurred_at: { type: string }
+        reason_code: { type: string }
+        reason_text: { type: string, nullable: true }
+        resolver_role: { type: string, enum: [self, operator, external, undefined] }
+        request_sent_at: { type: string, nullable: true }
+        request_sent_by: { type: string, nullable: true }
+        resolved_at: { type: string, nullable: true }
+
+    ApiGuide:
+      type: object
+      properties:
+        version: { type: string }
+        updated_at: { type: string }
+        readiness: { $ref: "#/components/schemas/Readiness" }
+        catalog:
+          type: array
+          items:
+            type: object
+            properties:
+              feature_code: { type: string }
+              uc_ref: { type: string }
+              path: { type: string }
+              method: { type: string }
+              input_desc: { type: string }
+              output_desc: { type: string }
+              error_reasons: { type: string, nullable: true }
+              warning_types: { type: string, nullable: true }
+        guideline_md: { type: string, description: 호출 주체 식별·무차등, 규격, 고지 의무, 경고 해석, 비식별, 성능, 낙인 방지 문구 가이드(OR-03) }
+        manual_md: { type: string, description: 절차, 예시, 오류·경고 대처, 시연 모드 해석 }
+        model_card_md: { type: string, description: FR-18 목적·한계·면책·검증 결과 }
+        openapi_url: { type: string, example: /openapi.json }

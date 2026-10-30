@@ -1,0 +1,70 @@
+/* design/style-guide.html 의 :root 토큰과 유틸리티 클래스 사본 (T004). 값 변경은 스타일 가이드에서 먼저. */
+:root{
+  --color-primary:#0066cc;--color-primary-focus:#0071e3;--color-primary-on-dark:#2997ff;
+  --color-ink:#1d1d1f;--color-body:#1d1d1f;--color-body-on-dark:#ffffff;--color-body-muted:#cccccc;--color-ink-muted-80:#333333;--color-ink-muted-48:#7a7a7a;
+  --color-canvas:#ffffff;--color-canvas-parchment:#f5f5f7;--color-surface-pearl:#fafafc;--color-surface-tile-1:#272729;--color-surface-tile-2:#2a2a2c;--color-surface-tile-3:#252527;--color-surface-black:#000000;--color-surface-chip-translucent:#d2d2d7;--color-on-primary:#ffffff;--color-on-dark:#ffffff;
+  --color-divider-soft:#f0f0f0;--color-hairline:#e0e0e0;
+  --status-free:#1d9a4f;--status-normal:#c98a00;--status-crowded:#d0342c;--status-uncertain:#7a7a7a;--status-none:#cccccc;
+  --font-display:"NanumBarunGothic","나눔바른고딕",system-ui,-apple-system,sans-serif;--font-text:"NanumBarunGothic","나눔바른고딕",system-ui,-apple-system,sans-serif;--font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --rounded-none:0px;--rounded-xs:5px;--rounded-sm:8px;--rounded-md:11px;--rounded-lg:18px;--rounded-pill:9999px;--rounded-full:9999px;
+  --space-xxs:4px;--space-xs:8px;--space-sm:12px;--space-md:17px;--space-lg:24px;--space-xl:32px;--space-xxl:48px;--space-section:80px;
+  --shadow-product:rgba(0,0,0,.22) 3px 5px 30px 0;--border-hairline:1px solid rgba(0,0,0,.08);
+  --container-text:980px;--container-grid:1440px;
+  --sidebar-w:240px;--sidebar-w-collapsed:64px;--header-h:56px;
+}
+.t-hero-display{font:700 56px/1.07 var(--font-display);letter-spacing:-.28px}
+.t-display-lg{font:700 40px/1.1 var(--font-display);letter-spacing:0}
+.t-display-md{font:700 34px/1.47 var(--font-text);letter-spacing:-.374px}
+.t-lead{font:400 28px/1.14 var(--font-display);letter-spacing:.196px}
+.t-lead-airy{font:300 24px/1.5 var(--font-text);letter-spacing:0}
+.t-tagline{font:700 21px/1.19 var(--font-display);letter-spacing:.231px}
+.t-body-strong{font:700 17px/1.24 var(--font-text);letter-spacing:-.374px}
+.t-body{font:400 17px/1.47 var(--font-text);letter-spacing:-.374px}
+.t-dense-link{font:400 17px/2.41 var(--font-text);letter-spacing:0}
+.t-caption{font:400 14px/1.43 var(--font-text);letter-spacing:-.224px}
+.t-caption-strong{font:700 14px/1.29 var(--font-text);letter-spacing:-.224px}
+.t-button-large{font:300 18px/1 var(--font-text);letter-spacing:0}
+.t-button-utility{font:400 14px/1.29 var(--font-text);letter-spacing:-.224px}
+.t-fine-print{font:400 12px/1 var(--font-text);letter-spacing:-.12px}
+.t-micro-legal{font:400 10px/1.3 var(--font-text);letter-spacing:-.08px}
+.t-nav-link{font:400 12px/1 var(--font-text);letter-spacing:-.12px}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--color-canvas-parchment);color:var(--color-body);font:400 17px/1.47 var(--font-text);letter-spacing:-.374px}
+a{color:var(--color-primary);text-decoration:none}a:hover{text-decoration:underline}
+code,kbd,pre{font:400 13px/1.5 var(--font-mono);letter-spacing:0}
+code{background:var(--color-canvas-parchment);padding:2px 6px;border-radius:var(--rounded-xs)}
+pre{background:var(--color-surface-tile-3);color:var(--color-body-muted);padding:var(--space-md);border-radius:var(--rounded-lg);overflow:auto;margin:0}
+h1,h2,h3,h4,p{margin:0}
+img{max-width:100%;display:block}
+.muted{color:var(--color-ink-muted-48)}
+.grid{display:grid;gap:var(--space-lg)}.grid-2{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(3,1fr)}.grid-4{grid-template-columns:repeat(4,1fr)}
+.stack>*+*{margin-top:var(--space-md)}
+.row{display:flex;gap:var(--space-sm);align-items:center;flex-wrap:wrap}
+/* 버튼 — pill(행동) / sm(유틸리티) */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-xs);border:0;cursor:pointer;text-decoration:none;white-space:nowrap;transition:transform .12s ease;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.95)}.btn:focus-visible{outline:2px solid var(--color-primary-focus);outline-offset:2px}
+.btn-primary{background:var(--color-primary);color:var(--color-on-primary);font:400 17px/1.47 var(--font-text);letter-spacing:-.374px;border-radius:var(--rounded-pill);padding:11px 22px;min-height:44px}
+.btn-secondary{background:transparent;color:var(--color-primary);font:400 17px/1.47 var(--font-text);letter-spacing:-.374px;border:1px solid var(--color-primary);border-radius:var(--rounded-pill);padding:10px 21px;min-height:44px}
+.btn-dark-utility{background:var(--color-ink);color:var(--color-on-dark);font:400 14px/1.29 var(--font-text);letter-spacing:-.224px;border-radius:var(--rounded-sm);padding:8px 15px}
+.btn-pearl{background:var(--color-surface-pearl);color:var(--color-ink-muted-80);font:400 14px/1.43 var(--font-text);letter-spacing:-.224px;border:3px solid var(--color-divider-soft);border-radius:var(--rounded-md);padding:8px 14px}
+.btn-icon{width:44px;height:44px;padding:0;border-radius:var(--rounded-full);background:rgba(210,210,215,.64);color:var(--color-ink);font-size:18px}
+.btn[disabled],.btn[aria-disabled="true"]{color:var(--color-ink-muted-48);background:var(--color-canvas-parchment);border-color:var(--color-hairline);cursor:not-allowed;transform:none}
+.text-link{color:var(--color-primary)}
+/* 카드·입력 */
+.utility-card{background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:var(--rounded-lg);padding:var(--space-lg)}
+.chip{display:inline-flex;align-items:center;gap:var(--space-xs);background:var(--color-canvas);color:var(--color-ink);font:400 14px/1.43 var(--font-text);letter-spacing:-.224px;border:1px solid var(--color-hairline);border-radius:var(--rounded-pill);padding:8px 14px}
+.chip.selected{border:2px solid var(--color-primary-focus);padding:7px 13px}
+.badge{display:inline-block;font:700 12px/1 var(--font-text);letter-spacing:0;padding:6px 10px;border-radius:var(--rounded-pill);background:var(--color-canvas-parchment);color:var(--color-ink-muted-80)}
+.input,select.input,textarea.input{font:400 17px/1.47 var(--font-text);letter-spacing:-.374px;color:var(--color-ink);background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:var(--rounded-sm);padding:9px 12px;min-height:44px;width:100%}
+.input:focus{outline:2px solid var(--color-primary-focus);outline-offset:1px;border-color:transparent}
+label.field{display:block}label.field>span{display:block;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;background:var(--color-canvas)}
+th,td{text-align:left;padding:var(--space-sm) var(--space-md);border-bottom:1px solid var(--color-hairline);vertical-align:top}
+th{color:var(--color-ink-muted-48);font:700 12px/1.4 var(--font-text);letter-spacing:.2px;text-transform:uppercase}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+/* 상태 배지 (C4) — 색 + 글자 */
+.status{display:inline-flex;align-items:center;gap:6px;font:700 14px/1.29 var(--font-text);letter-spacing:-.224px}
+.status::before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor;flex:none}
+.status-free{color:var(--status-free)}.status-normal{color:var(--status-normal)}.status-crowded{color:var(--status-crowded)}
+.status-uncertain{color:var(--status-uncertain)}.status-none{color:var(--status-none)}.status-unavailable{color:var(--status-none)}
