@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AdminLoginChip } from "../components/AdminLogin";
 import { ReadinessChip } from "../components/ReadinessChip";
 import { useDemo } from "../stores/demo";
+import { ThemeToggle } from "../stores/theme";
 import { stopWebcam, useWebcam } from "../stores/webcam";
 import { fmtTime, hhmm } from "../api/client";
 
@@ -53,6 +54,7 @@ export function Header() {
             시연: <b>{demo.on ? `켜짐${demo.endAt ? " · " + hhmm(demo.endAt) + " 종료" : ""}` : "꺼짐"}</b>
           </span>
         )}
+        <ThemeToggle />
         <AdminLoginChip />
       </div>
     </header>

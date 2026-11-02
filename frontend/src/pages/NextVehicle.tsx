@@ -13,7 +13,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ApiError, fmtTime, get, minutesAgo, minutesFromNow, type GateError, hhmm } from "../api/client";
 import type { NextVehicleItem, NextVehicleResponse, RouteRef, StopRef } from "../api/types";
 import { isStaff, useCodes, usePerms } from "../stores/auth";
+import { BusFill } from "../components/BusFill";
+import { previewResponse } from "../dev/previewBuses";
 import { GateBlock } from "../components/GateBlock";
+import { RouteLine } from "../components/RouteLine";
 import { SourceDrawer } from "../components/SourceDrawer";
 import { StatusBadge, seatHint } from "../components/StatusBadge";
 import { WarningChips } from "../components/WarningChips";
@@ -51,6 +54,10 @@ export default function NextVehicle() {
   // 헤더 검색으로 같은 화면에서 검색어만 바뀌면 그 이름으로 다시 찾는다
   useEffect(() => { if (initQ) { setRouteId(""); setPickStop(""); setStopQ(initQ); } }, [initQ]);
   useEffect(() => { get<RouteRef[]>("/v1/reference/routes").then(setRoutes).catch(() => undefined); }, []);
+  // 시연 기본 노선이 지금 공급자 목록에 없으면(fixture 모드) 내부 번호가 화면에 드러나지 않게 비운다. 링크로 지정한 값은 그대로 둔다
+  useEffect(() => {
+    if (routes.length && !sp.get("route_id") && routeId === DEFAULT_ROUTE && !routes.some((r) => r.route_id === DEFAULT_ROUTE)) { setRouteId(""); setPickStop(""); }
+  }, [routes, routeId, sp]);
   useEffect(() => {
     if (!routeId) { setStops([]); return; }
     get<StopRef[]>("/v1/reference/stops", { query: { route_id: routeId, limit: 500 } }).then(setStops).catch(() => setStops([]));
@@ -85,7 +92,8 @@ export default function NextVehicle() {
   // 고르면 반대쪽 검색어는 비운다 — 고른 것에 맞는 목록 전체를 보여 준다
   const pickRoute = (id: string) => { setRouteId(id); if (id) setStopQ(""); };
   const pickStopById = (id: string) => { setPickStop(id); if (id) setRouteQ(""); };
-  const [data, setData] = useState<NextVehicleResponse | null>(null);
+  const preview = import.meta.env.DEV && sp.get("preview") === "1";   // 디자인 확인용 예시 화면 (개발 서버 전용)
+  const [data, setData] = useState<NextVehicleResponse | null>(() => (preview ? previewResponse() : null));
   const [gate, setGate] = useState<GateError | null>(null);
   const [sel, setSel] = useState<NextVehicleItem | null>(null);
   const [busy, setBusy] = useState(false);
@@ -103,7 +111,7 @@ export default function NextVehicle() {
   // 화면 시계 — "N분 전"·"약 N분 후"를 줄이기만 한다 (서버 호출 없음)
   useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(t); }, []);
   // 노선·정류장을 바꾸면 이전 결과는 치운다 — 다른 정류장 결과를 보여 주지 않게
-  useEffect(() => { setData(null); setFetchedLocal(null); setAutoUntil(null); }, [routeId, stopId]);
+  useEffect(() => { if (!preview) setData(null); setFetchedLocal(null); setAutoUntil(null); }, [routeId, stopId, preview]);
   // 링크로 노선·정류장이 지정돼 들어온 경우(S8 «시연 수행» 등)만 준비되면 1번 조회 — 그 링크를 누른 것이 조회 요청이다
   const linked = useRef(!!(sp.get("route_id") && sp.get("stop_id")));
   useEffect(() => { if (linked.current && ready && stopId) { linked.current = false; load(); } }, [ready, load, stopId]);
@@ -122,62 +130,85 @@ export default function NextVehicle() {
   const unavailable = data && data.source_status !== "ok";
   return (
     <>
-      <div className="page-title"><h1 className="t-display-md">버스 조회</h1><p className="t-caption">타려는 버스가 언제 오는지, 얼마나 찼는지</p></div>
-      {!ready && <div className="gate output" role="status" style={{ marginBottom: 12 }}>지금은 조회할 수 없다 — 서버 준비 중. 잠시 뒤 다시 연다.</div>}
-      <form className="utility-card stack" onSubmit={(e) => { e.preventDefault(); load(); }} aria-label="버스 조회 조건">
-        <div className="row" style={{ alignItems: "flex-end" }}>
-          <label className="field" style={{ width: 110 }}><span className="t-caption">버스 번호 검색</span>
-            <input className="input" value={routeQ} onChange={(e) => setRouteQ(e.target.value)} placeholder="예: 102" /></label>
-          <label className="field" style={{ minWidth: 150 }}><span className="t-caption">버스 ({shownRoutes.length})</span>
-            <select className="input" aria-label="노선" value={routeId} onChange={(e) => pickRoute(e.target.value)}>
-              <option value="">버스 선택</option>
-              {routeId && !shownRoutes.some((r) => r.route_id === routeId) && <option value={routeId}>{routeName}</option>}
-              {shownRoutes.map((r) => <option key={r.route_id} value={r.route_id} title={r.route_id}>{r.route_no}</option>)}
-            </select></label>
-          <label className="field" style={{ width: 140 }}><span className="t-caption">정류장 검색</span>
-            <input className="input" value={stopQ} onChange={(e) => setStopQ(e.target.value)} placeholder="예: 충남대" /></label>
-          <label className="field" style={{ minWidth: 240, flex: 1 }}><span className="t-caption">정류장 ({stopList.length})</span>
-            <select className="input" aria-label="정류장" value={pickSel} onChange={(e) => pickStopById(e.target.value)}>
-              <option value="">{routeId || stopQ.trim() ? "정류장 선택" : "정류장 이름을 입력하거나 버스를 고른다"}</option>
-              {pickStop && !stopList.some((x) => x.stop_id === pickSel) && <option value={pickSel}>{pickName}</option>}
-              {stopList.map((x) => <option key={x.stop_id} value={x.stop_id} title={x.stop_id}>{x.stop_name}{x.n ? ` · 버스 ${x.n}개` : ""}</option>)}
-            </select></label>
-          <button className="btn btn-primary" disabled={!ready || busy || !stopId} title={!ready ? `준비 중${c(" (G0)")}` : !stopId ? "버스와 정류장을 모두 고른다" : ""}>조회</button>
-          {(routeId || pickStop) && <button type="button" className="btn btn-pearl" onClick={() => { setRouteId(""); setPickStop(""); setRouteQ(""); setStopQ(""); }}>처음부터</button>}
+      <div className="hero">
+        <h1>버스 조회</h1>
+        <p>타기 전에, 얼마나 찼는지 먼저 확인하세요</p>
+      </div>
+      {preview && <div className="preview-note" role="status">디자인 미리보기 — 예시 데이터입니다</div>}
+      {!ready && <div className="gate output" role="status" style={{ marginBottom: 12 }}>지금은 조회할 수 없어요. 서버를 준비하고 있으니 잠시 뒤 다시 열어 주세요.</div>}
+      <form className="finder" onSubmit={(e) => { e.preventDefault(); load(); }} aria-label="버스 조회 조건">
+        <div className="finder-field">
+          <span className="finder-title">어떤 버스를 타세요?</span>
+          <select className="input" aria-label="노선" value={routeId} onChange={(e) => pickRoute(e.target.value)}>
+            <option value="">버스 선택 ({shownRoutes.length})</option>
+            {routeId && !shownRoutes.some((r) => r.route_id === routeId) && <option value={routeId}>{routeName}</option>}
+            {shownRoutes.map((r) => <option key={r.route_id} value={r.route_id}>{r.route_no}</option>)}
+          </select>
+          <input className="input finder-search" value={routeQ} onChange={(e) => setRouteQ(e.target.value)} placeholder="번호로 찾기 (예: 102)" aria-label="버스 번호 검색" />
+        </div>
+        <div className="finder-field">
+          <span className="finder-title">어느 정류장에서 타세요?</span>
+          <select className="input" aria-label="정류장" value={pickSel} onChange={(e) => pickStopById(e.target.value)}>
+            <option value="">{routeId || stopQ.trim() ? `정류장 선택 (${stopList.length})` : "정류장 이름을 검색하거나 버스를 먼저 고르세요"}</option>
+            {pickStop && !stopList.some((x) => x.stop_id === pickSel) && <option value={pickSel}>{pickName}</option>}
+            {stopList.map((x) => <option key={x.stop_id} value={x.stop_id}>{x.stop_name}{x.n ? ` · 버스 ${x.n}개` : ""}</option>)}
+          </select>
+          <input className="input finder-search" value={stopQ} onChange={(e) => setStopQ(e.target.value)} placeholder="이름으로 찾기 (예: 충남대)" aria-label="정류장 검색" />
+        </div>
+        <div className="finder-go">
+          <button className="btn btn-primary" disabled={!ready || busy || !stopId} title={!ready ? `준비 중${c(" (G0)")}` : !stopId ? "버스와 정류장을 모두 골라 주세요" : ""}>조회</button>
+          {(routeId || pickStop) && <button type="button" className="finder-reset" onClick={() => { setRouteId(""); setPickStop(""); setRouteQ(""); setStopQ(""); }}>처음부터</button>}
         </div>
       </form>
-      <div className="row t-caption" style={{ marginTop: 12 }} aria-live="polite">
-        {fetchedLocal ? <span>마지막 조회 <b>{ago(age ?? 0)}</b></span> : <span className="muted">버스와 정류장을 고르고 «조회»를 누른다</span>}
-        {fetchedLocal && <button type="button" className="btn btn-pearl" style={{ minHeight: 30 }} onClick={() => load()} disabled={!ready || busy}>{busy ? "조회 중…" : "다시 조회"}</button>}
-        <label className="chip" title="30초마다 다시 조회하고 5분 뒤 자동으로 꺼진다. 다른 탭에 가 있으면 부르지 않는다">
-          <input type="checkbox" checked={!!autoUntil} disabled={!ready || !stopId} onChange={(e) => { if (e.target.checked) { setAutoUntil(Date.now() + AUTO_FOR_MS); if (!fetchedLocal) load(); } else setAutoUntil(null); }} />
-          &nbsp;자동 갱신{autoUntil ? ` · ${Math.max(0, Math.ceil((autoUntil - now) / 60000))}분 뒤 꺼짐` : " (5분)"}
-        </label>
-      </div>
+      {fetchedLocal && (
+        <div className="row t-caption" style={{ marginTop: 12 }} aria-live="polite">
+          <span>마지막 조회 <b>{ago(age ?? 0)}</b></span>
+          <button type="button" className="btn btn-pearl" style={{ minHeight: 30 }} onClick={() => load()} disabled={!ready || busy}>{busy ? "조회 중…" : "다시 조회"}</button>
+          <label className="chip" title="30초마다 다시 조회하고 5분 뒤 자동으로 꺼집니다">
+            <input type="checkbox" checked={!!autoUntil} disabled={!ready || !stopId} onChange={(e) => setAutoUntil(e.target.checked ? Date.now() + AUTO_FOR_MS : null)} />
+            &nbsp;자동 갱신{autoUntil ? ` · ${Math.max(0, Math.ceil((autoUntil - now) / 60000))}분 뒤 꺼짐` : " (5분)"}
+          </label>
+        </div>
+      )}
+      {!data && !gate && (
+        <section className="legend-card" aria-label="버스 그림 보는 법">
+          <h2>버스 그림은 이렇게 보세요</h2>
+          <p>버스 안이 차오를수록 사람이 많다는 뜻이에요</p>
+          <ul className="level-legend">
+            <li><BusFill ratio={30} level="free" width={104} /><span>여유</span></li>
+            <li><BusFill ratio={60} level="normal" width={104} /><span>보통</span></li>
+            <li><BusFill ratio={90} level="crowded" width={104} /><span>혼잡</span></li>
+            <li><BusFill ratio={60} level="uncertain" width={104} /><span>판독 불확실</span></li>
+            <li><BusFill level={null} width={104} /><span>정보 없음</span></li>
+          </ul>
+        </section>
+      )}
       {stale && (
         <div className="gate output" style={{ marginTop: 12 }} role="status">
-          <b>정보가 {Math.floor((age ?? 0) / 60000)}분 지났다</b> — 도착 예정은 화면에서 줄여 보이지만 실제 위치는 바뀌었을 수 있다.{" "}
+          <b>정보가 {Math.floor((age ?? 0) / 60000)}분 지났어요</b> — 실제 위치는 바뀌었을 수 있으니 다시 조회해 주세요.{" "}
           <button type="button" className="btn btn-secondary" style={{ minHeight: 30 }} onClick={() => load()} disabled={!ready || busy}>다시 조회</button>
         </div>
       )}
       {data && !unavailable && (
         <section className="stack" style={{ marginTop: 16 }} aria-label="조회 결과">
-          <h2 className="t-body-strong">{routeName} · {pickName.split(" (")[0]}</h2>
-          {data.vehicles.length === 0 && <p className="muted">다가오는 버스가 없다</p>}
-          <ul className="bus-list">
+          <h2 className="result-title">{preview ? "102번 · 충남대학교" : `${routeName} · ${pickName.split(" (")[0]}`}</h2>
+          {data.vehicles.length === 0 && <p className="muted">지금 다가오는 버스가 없어요</p>}
+          <RouteLine vehicles={data.vehicles} stopName={preview ? "충남대학교" : pickName.split(" (")[0]} />
+          <ul className="bus-cards">
             {data.vehicles.map((v, i) => {
               const m = minutesFromNow(v.expected_arrival_at); const measured = v.basis_type === "measured";
               return (
-                <li key={i} className="bus-item">
-                  <div>
+                <li key={i} className="bus-card">
+                  <BusFill ratio={measured && v.vacant_ratio != null ? 100 - v.vacant_ratio : null} level={measured ? v.crowding_level : null} width={150} />
+                  <div className="eta">
                     <div className="when">{m === null ? "도착 정보 없음" : m <= 0 ? "곧 도착" : `약 ${m}분 후`}</div>
-                    <span className="t-caption muted">{hhmm(v.expected_arrival_at) ?? ""}{v.vehicle_id ? ` · ${v.vehicle_id}` : ""}</span>
+                    <span className="t-caption muted">{hhmm(v.expected_arrival_at) ?? ""}{staff && v.vehicle_id ? ` · ${v.vehicle_id}` : ""}</span>
                   </div>
                   <div className="fill">
                     {measured ? <>
                       <StatusBadge level={v.crowding_level} suffix={seatHint(v.crowding_level)} />
-                      <span className="t-caption">남은 공간 <b>{v.vacant_ratio?.toFixed(0) ?? "—"}%</b>{v.persons_sum != null ? ` · ${headcount(v)}` : ""}</span>
-                    </> : <span className="t-caption muted">혼잡 정보 없음</span>}
+                      <span className="t-caption">남은 공간 <b>{v.crowding_level === "uncertain" ? "참고 " : ""}{v.vacant_ratio?.toFixed(0) ?? "—"}%</b>{v.persons_sum != null ? ` · ${headcount(v)}` : ""}</span>
+                    </> : <span className="t-caption muted">혼잡 정보가 아직 없어요</span>}
                   </div>
                 </li>
               );

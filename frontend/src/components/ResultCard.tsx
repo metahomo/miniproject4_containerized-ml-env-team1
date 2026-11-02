@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Assessment } from "../api/types";
 import { fmtTime } from "../api/client";
+import { BusFill } from "./BusFill";
 import { SourceDrawer } from "./SourceDrawer";
 import { StatusBadge, seatHint } from "./StatusBadge";
 import { WarningChips } from "./WarningChips";
@@ -25,8 +26,9 @@ export function ResultCard({ a, demo, footer }: { a: Assessment; demo?: boolean;
   const h = headcount(a);
   return (
     <section className="utility-card result stack" aria-label="진단 결과">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <div className="row" style={{ gap: 16 }}>
+      <div className="result-hero">
+        <BusFill ratio={a.capacity ? a.occupied_area_ratio : null} level={a.crowding_level} width={240} />
+        <div className="row figures" style={{ gap: 16 }}>
           <span className={"big" + (ref ? " ref" : "")} aria-label={ref ? "참고 인원" : "인원 / 정원"}>
             {ref ? "참고 " : ""}{h.persons}
           </span>
