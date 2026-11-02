@@ -107,6 +107,14 @@ docker compose ps
 
 두 줄 모두 `(healthy)` 가 되면 준비 완료입니다. 모델을 올리는 데 **20초~1분** 정도 걸립니다.
 
+백엔드가 `(unhealthy)` 이면 진단을 할 수 없는 상태입니다. 자동으로 재시작되지 않으므로 아래를 확인합니다.
+
+```powershell
+curl.exe -s http://localhost:9544/v1/readiness
+docker compose logs backend
+docker compose exec backend ls -la /app/backend/models
+```
+
 | 주소 | 내용 |
 |---|---|
 | http://localhost:9504 | **웹 화면** |

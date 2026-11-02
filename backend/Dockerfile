@@ -45,9 +45,10 @@ VOLUME ["/data"]
 
 EXPOSE 9544 9524
 
-# readiness 는 기동 중에도 200(preparing) — 응답이 오면 살아 있는 것. 모델 적재·웜업에 20~60초
+# readiness 는 기동 중(preparing)·모델 없음(unavailable)에도 200 — 값이 ready 일 때만 healthy. 모델 적재·웜업에 20~60초
+# unhealthy 여도 재시작하지 않는다(restart 는 프로세스 종료에만 동작) — 상태 확인·관리 API 는 계속 응답한다
 HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9544/v1/readiness', timeout=4)"
+    CMD python -c "import json,sys,urllib.request as u; sys.exit(json.load(u.urlopen('http://127.0.0.1:9544/v1/readiness', timeout=4))['readiness'] != 'ready')"
 
 # cv_api.serve 는 공개된 기본 키(changeme-…)면 시작을 거부한다 (BE-1) — docker.env 에 새 키를 넣는다
 CMD ["python", "-m", "cv_api.serve", "--host", "0.0.0.0"]
