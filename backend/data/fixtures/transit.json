@@ -1,0 +1,154 @@
+{
+  "_comment": "시연·테스트용 고정 운행 정보 (research R12). 시연 시나리오 HG/시연웹 §1-1 과 일치. 도착 시각은 조회 시각 + minutes 로 계산된다.",
+  "routes": {
+    "R102": {
+      "mode": "bus",
+      "route_name": "102번",
+      "headway_minutes": 12,
+      "headway_source": "bis",
+      "fleet": [
+        {
+          "vehicle_id": "1234",
+          "vehicle_type_id": "VT_LOW"
+        },
+        {
+          "vehicle_id": "5678",
+          "vehicle_type_id": "VT_LOW"
+        },
+        {
+          "vehicle_id": "9012",
+          "vehicle_type_id": "VT_LOW"
+        },
+        {
+          "vehicle_id": "3456",
+          "vehicle_type_id": "VT_LOW"
+        }
+      ],
+      "stops": {
+        "3001": {
+          "stop_name": "충남대",
+          "arrivals": [
+            {
+              "vehicle_id": "1234",
+              "minutes": 2,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "5678",
+              "minutes": 6,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "9012",
+              "minutes": 11,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "3456",
+              "minutes": 15,
+              "vehicle_type_id": "VT_LOW"
+            }
+          ]
+        }
+      }
+    },
+    "R311": {
+      "mode": "bus",
+      "route_name": "311번",
+      "headway_minutes": null,
+      "fleet": [
+        {
+          "vehicle_id": "7001",
+          "vehicle_type_id": "VT_LOW"
+        }
+      ],
+      "stops": {
+        "3010": {
+          "stop_name": "유성온천역",
+          "arrivals": [
+            {
+              "vehicle_id": "7001",
+              "minutes": 4
+            }
+          ]
+        }
+      }
+    },
+    "30300037": {
+      "mode": "bus",
+      "route_name": "102번 (30300037) — 실제 BIS 시연의 예비 데이터(BIS 장애 시 EXTERNAL_PROVIDER=fixture)",
+      "headway_minutes": 8,
+      "headway_source": "bis",
+      "fleet": [
+        {
+          "vehicle_id": "대전75자9015",
+          "vehicle_type_id": "VT_LOW"
+        },
+        {
+          "vehicle_id": "대전75자9017",
+          "vehicle_type_id": "VT_LOW"
+        },
+        {
+          "vehicle_id": "대전75자2014",
+          "vehicle_type_id": "VT_LOW"
+        },
+        {
+          "vehicle_id": "대전75자9016",
+          "vehicle_type_id": "VT_LOW"
+        }
+      ],
+      "stops": {
+        "30300037:42620": {
+          "stop_name": "충남대학교 (중앙시장 방면)",
+          "arrivals": [
+            {
+              "vehicle_id": "대전75자9015",
+              "minutes": 2,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "대전75자9017",
+              "minutes": 7,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "대전75자2014",
+              "minutes": 13,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "대전75자9016",
+              "minutes": 19,
+              "vehicle_type_id": "VT_LOW"
+            }
+          ]
+        },
+        "30300037:42600": {
+          "stop_name": "충남대학교 (수통골 방면)",
+          "arrivals": [
+            {
+              "vehicle_id": "대전75자9015",
+              "minutes": 4,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "대전75자9017",
+              "minutes": 10,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "대전75자2014",
+              "minutes": 16,
+              "vehicle_type_id": "VT_LOW"
+            },
+            {
+              "vehicle_id": "대전75자9016",
+              "minutes": 22,
+              "vehicle_type_id": "VT_LOW"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

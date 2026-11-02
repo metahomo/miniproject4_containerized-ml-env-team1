@@ -1,0 +1,44 @@
+# 대전 대중교통 군중 밀집도·잔여 공간 진단 — 도커 실행 (받는 쪽·개발 쪽 공용)
+#
+# 준비 (이 파일과 같은 폴더에):
+#   1) docker.env      ← docker.env.example 을 복사해 API_KEYS·ADMIN_KEYS 를 채운다
+#   2) models/         ← 드라이브의 models 폴더 (head_crowdhuman_n1280.pt + .json)
+#   이미지는 Docker Hub 공개 저장소(hyungnss/sumtong)에서 처음 실행할 때 자동으로 받는다 — 로그인 필요 없음
+# 실행:  docker compose up -d        → 웹 http://localhost:9504 · API http://localhost:9544/docs
+# 중지:  docker compose down         (DB 는 cv-data 볼륨에 남는다. 지우려면 down -v)
+#
+# 바꿀 수 있는 값 — 셸 환경변수나 이 폴더의 .env 파일로 (모두 기본값이 있다):
+#   CV_IMAGE       이미지 저장소             기본 hyungnss/sumtong
+#   CV_TAG         판 (backend-<판>·frontend-<판>)   기본 latest
+#   CV_WEB_PORT    웹 포트                   기본 9504
+#   CV_API_PORT    공개 API 포트             기본 9544
+#   CV_MODELS_DIR  모델 폴더                 기본 ./models
+name: sumtong
+
+services:
+  backend:
+    image: ${CV_IMAGE:-hyungnss/sumtong}:backend-${CV_TAG:-latest}
+    env_file: docker.env
+    volumes:
+      - cv-data:/data                                            # SQLite DB (docker.env 의 DATABASE_URL=sqlite:////data/cv.db)
+      - ${CV_MODELS_DIR:-./models}:/app/backend/models:ro        # 모델 .pt + .json — 폴더째, 읽기 전용
+    ports:
+      - "${CV_API_PORT:-9544}:9544"                              # 외부 연계용 공개 API·Swagger. 9524 는 웹(nginx)만 쓰므로 밖에 열지 않는다
+    extra_hosts:
+      - "host.docker.internal:host-gateway"                      # 리눅스에서도 호스트의 Ollama 에 닿게 (DETECTOR=ollama_vl 일 때만)
+    restart: unless-stopped
+    # 상태 확인은 이미지에 있다 (/v1/readiness, 시작 유예 120초)
+
+  frontend:
+    image: ${CV_IMAGE:-hyungnss/sumtong}:frontend-${CV_TAG:-latest}
+    environment:
+      BACKEND_WEB: backend:9524                                  # nginx 가 /v1·/docs 를 넘길 곳 (서비스 이름)
+      BACKEND_API: backend:9544                                  # /API·/model-api 를 넘길 곳
+    ports:
+      - "${CV_WEB_PORT:-9504}:9504"
+    depends_on:
+      - backend                                                  # 먼저 띄울 뿐 — 모델 적재 중에는 nginx 가 502 를 주다가 자동으로 붙는다
+    restart: unless-stopped
+
+volumes:
+  cv-data:

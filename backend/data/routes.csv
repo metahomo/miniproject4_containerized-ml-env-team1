@@ -1,0 +1,3 @@
+route_id,mode,route_name,source
+R102,bus,102번,fixture
+R311,bus,311번,fixture

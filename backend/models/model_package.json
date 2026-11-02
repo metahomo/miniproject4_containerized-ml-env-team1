@@ -1,0 +1,10 @@
+{
+  "repo_url": "https://github.com/MaxTheTechy/yolo",
+  "commit_hash": "weights-sha256:f59b3d833e2ff32e",
+  "weights_file": "yolov8n.pt",
+  "license": null,
+  "required_versions": "ultralytics>=8.2, torch>=2.1",
+  "contract_check_result": "adapter",
+  "detector_kind": "yolov8",
+  "fetched_at": "2026-09-28T08:08:43"
+}

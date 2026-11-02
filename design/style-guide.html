@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Style Guide — 잔여 공간 진단 서비스</title>
+<meta name="description" content="Apple 디자인 분석(getdesign add apple)을 기반으로 한 대전 대중교통 잔여 공간 진단 서비스 UI 스타일 가이드">
+<style>
+/* =========================================================
+   글꼴 — 나눔바른고딕 (네이버 배포 웹폰트). 굵기 300/400/700 을
+   하나의 family 이름으로 묶는다. 네이버 기본 CSS 는 굵기마다
+   다른 이름을 쓰므로 여기서 직접 선언한다.
+   ========================================================= */
+@font-face{font-family:"NanumBarunGothic";font-weight:300;font-style:normal;font-display:swap;
+  src:url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumBarunGothicL/NanumBarunGothicWebLight.woff) format("woff"),
+      url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumBarunGothicL/NanumBarunGothicWebLight.ttf) format("truetype")}
+@font-face{font-family:"NanumBarunGothic";font-weight:400;font-style:normal;font-display:swap;
+  src:url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumBarunGothic/NanumBarunGothicWeb.woff) format("woff"),
+      url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumBarunGothic/NanumBarunGothicWeb.ttf) format("truetype")}
+@font-face{font-family:"NanumBarunGothic";font-weight:700;font-style:normal;font-display:swap;
+  src:url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumBarunGothic/NanumBarunGothicWebBold.woff) format("woff"),
+      url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumBarunGothic/NanumBarunGothicWebBold.ttf) format("truetype")}
+/* =========================================================
+   0. 디자인 토큰 — DESIGN.md (getdesign add apple) 원본 값
+   모든 컴포넌트는 아래 변수만 참조한다. hex 직접 사용 금지.
+   ========================================================= */
+:root{
+  /* Colors — Brand & Accent */
+  --color-primary:#0066cc;
+  --color-primary-focus:#0071e3;
+  --color-primary-on-dark:#2997ff;
+  /* Colors — Text */
+  --color-ink:#1d1d1f;
+  --color-body:#1d1d1f;
+  --color-body-on-dark:#ffffff;
+  --color-body-muted:#cccccc;
+  --color-ink-muted-80:#333333;
+  --color-ink-muted-48:#7a7a7a;
+  /* Colors — Surface */
+  --color-canvas:#ffffff;
+  --color-canvas-parchment:#f5f5f7;
+  --color-surface-pearl:#fafafc;
+  --color-surface-tile-1:#272729;
+  --color-surface-tile-2:#2a2a2c;
+  --color-surface-tile-3:#252527;
+  --color-surface-black:#000000;
+  --color-surface-chip-translucent:#d2d2d7;
+  --color-on-primary:#ffffff;
+  --color-on-dark:#ffffff;
+  /* Colors — Hairline */
+  --color-divider-soft:#f0f0f0;
+  --color-hairline:#e0e0e0;
+
+  /* 프로젝트 확장 토큰 — 혼잡 등급 (DESIGN.md 에는 없음. §7 참조) */
+  --status-free:#1d9a4f;
+  --status-normal:#c98a00;
+  --status-crowded:#d0342c;
+  --status-uncertain:#7a7a7a;
+  --status-none:#cccccc;
+
+  /* Typography */
+  --font-display:"NanumBarunGothic","나눔바른고딕",system-ui,-apple-system,sans-serif;
+  --font-text:"NanumBarunGothic","나눔바른고딕",system-ui,-apple-system,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+
+  /* Rounded */
+  --rounded-none:0px;
+  --rounded-xs:5px;
+  --rounded-sm:8px;
+  --rounded-md:11px;
+  --rounded-lg:18px;
+  --rounded-pill:9999px;
+  --rounded-full:9999px;
+
+  /* Spacing */
+  --space-xxs:4px;
+  --space-xs:8px;
+  --space-sm:12px;
+  --space-md:17px;
+  --space-lg:24px;
+  --space-xl:32px;
+  --space-xxl:48px;
+  --space-section:80px;
+
+  /* Elevation — 시스템 전체에서 유일한 그림자 (제품 이미지 전용) */
+  --shadow-product:rgba(0,0,0,.22) 3px 5px 30px 0;
+  --border-hairline:1px solid rgba(0,0,0,.08);
+
+  /* Layout */
+  --container-text:980px;
+  --container-grid:1440px;
+}
+
+/* =========================================================
+   1. 타이포그래피 유틸리티 (DESIGN.md typography 토큰 1:1)
+   ========================================================= */
+.t-hero-display{font:700 56px/1.07 var(--font-display);letter-spacing:-.28px}
+.t-display-lg{font:700 40px/1.1 var(--font-display);letter-spacing:0}
+.t-display-md{font:700 34px/1.47 var(--font-text);letter-spacing:-.374px}
+.t-lead{font:400 28px/1.14 var(--font-display);letter-spacing:.196px}
+.t-lead-airy{font:300 24px/1.5 var(--font-text);letter-spacing:0}
+.t-tagline{font:700 21px/1.19 var(--font-display);letter-spacing:.231px}
+.t-body-strong{font:700 17px/1.24 var(--font-text);letter-spacing:-.374px}
+.t-body{font:400 17px/1.47 var(--font-text);letter-spacing:-.374px}
+.t-dense-link{font:400 17px/2.41 var(--font-text);letter-spacing:0}
+.t-caption{font:400 14px/1.43 var(--font-text);letter-spacing:-.224px}
+.t-caption-strong{font:700 14px/1.29 var(--font-text);letter-spacing:-.224px}
+.t-button-large{font:300 18px/1 var(--font-text);letter-spacing:0}
+.t-button-utility{font:400 14px/1.29 var(--font-text);letter-spacing:-.224px}
+.t-fine-print{font:400 12px/1 var(--font-text);letter-spacing:-.12px}
+.t-micro-legal{font:400 10px/1.3 var(--font-text);letter-spacing:-.08px}
+.t-nav-link{font:400 12px/1 var(--font-text);letter-spacing:-.12px}
+
+/* =========================================================
+   2. 베이스
+   ========================================================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--color-canvas);color:var(--color-body);font:400 17px/1.47 var(--font-text);letter-spacing:-.374px}
+a{color:var(--color-primary);text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd{font:400 13px/1.4 var(--font-mono);letter-spacing:0;background:var(--color-canvas-parchment);padding:2px 6px;border-radius:var(--rounded-xs)}
+h1,h2,h3,h4,p{margin:0}
+img{max-width:100%;display:block}
+.container{max-width:var(--container-text);margin:0 auto;padding:0 var(--space-lg)}
+.container-wide{max-width:var(--container-grid);margin:0 auto;padding:0 var(--space-lg)}
+.section{padding:var(--space-section) 0}
+.section-head{margin-bottom:var(--space-xxl)}
+.section-head .eyebrow{color:var(--color-ink-muted-48);margin-bottom:var(--space-xs)}
+.section-head p{color:var(--color-ink-muted-80);margin-top:var(--space-sm);max-width:720px}
+.on-dark{color:var(--color-on-dark)}
+.on-dark .section-head .eyebrow{color:var(--color-body-muted)}
+.on-dark .section-head p{color:var(--color-body-muted)}
+.on-dark a{color:var(--color-primary-on-dark)}
+.on-dark code{background:rgba(255,255,255,.08);color:var(--color-body-on-dark)}
+.parchment{background:var(--color-canvas-parchment)}
+.tile-dark{background:var(--color-surface-tile-1)}
+.muted{color:var(--color-ink-muted-48)}
+.grid{display:grid;gap:var(--space-lg)}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.stack>*+*{margin-top:var(--space-md)}
+
+/* =========================================================
+   3. 내비게이션 — global-nav (44px, 검정) + sub-nav-frosted (52px)
+   ========================================================= */
+.global-nav{position:sticky;top:0;z-index:20;height:44px;background:var(--color-surface-black);color:var(--color-on-dark)}
+.global-nav .inner{max-width:var(--container-grid);margin:0 auto;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 var(--space-lg)}
+.global-nav ul{list-style:none;display:flex;gap:20px;margin:0;padding:0}
+.global-nav a{color:var(--color-on-dark);opacity:.8}
+.global-nav a:hover{opacity:1;text-decoration:none}
+.global-nav .brand{font-weight:600;opacity:1}
+.sub-nav{position:sticky;top:44px;z-index:19;height:52px;background:rgba(245,245,247,.8);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:var(--border-hairline)}
+.sub-nav .inner{max-width:var(--container-grid);margin:0 auto;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 var(--space-lg)}
+.sub-nav nav{display:flex;gap:var(--space-lg);align-items:center}
+.sub-nav nav a{color:var(--color-ink)}
+.sub-nav nav a:hover{color:var(--color-primary);text-decoration:none}
+
+/* =========================================================
+   4. 버튼 — 두 가지 문법: pill(행동) / sm-rect(유틸리티)
+   ========================================================= */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-xs);border:0;cursor:pointer;text-decoration:none;white-space:nowrap;transition:transform .12s ease;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.95)}
+.btn:focus-visible{outline:2px solid var(--color-primary-focus);outline-offset:2px}
+.btn-primary{background:var(--color-primary);color:var(--color-on-primary);font:400 17px/1.47 var(--font-text);letter-spacing:-.374px;border-radius:var(--rounded-pill);padding:11px 22px;min-height:44px}
+.btn-secondary{background:transparent;color:var(--color-primary);font:400 17px/1.47 var(--font-text);letter-spacing:-.374px;border:1px solid var(--color-primary);border-radius:var(--rounded-pill);padding:10px 21px;min-height:44px}
+.btn-dark-utility{background:var(--color-ink);color:var(--color-on-dark);font:400 14px/1.29 var(--font-text);letter-spacing:-.224px;border-radius:var(--rounded-sm);padding:8px 15px}
+.btn-pearl{background:var(--color-surface-pearl);color:var(--color-ink-muted-80);font:400 14px/1.43 var(--font-text);letter-spacing:-.224px;border:3px solid var(--color-divider-soft);border-radius:var(--rounded-md);padding:8px 14px}
+.btn-store-hero{background:var(--color-primary);color:var(--color-on-primary);font:300 18px/1 var(--font-text);border-radius:var(--rounded-pill);padding:14px 28px;min-height:44px}
+.btn-icon{width:44px;height:44px;padding:0;border-radius:var(--rounded-full);background:rgba(210,210,215,.64);color:var(--color-ink);font-size:18px}
+.btn[disabled]{color:var(--color-ink-muted-48);background:var(--color-canvas-parchment);cursor:not-allowed}
+.text-link{color:var(--color-primary)}
+.text-link-on-dark{color:var(--color-primary-on-dark)}
+
+/* =========================================================
+   5. 카드 · 입력 · 기타 컴포넌트
+   ========================================================= */
+.product-tile{padding:var(--space-section) var(--space-lg);text-align:center;border-radius:var(--rounded-none)}
+.product-tile .stack>*+*{margin-top:var(--space-sm)}
+.product-tile .cta{display:flex;gap:var(--space-sm);justify-content:center;margin-top:var(--space-lg)}
+.product-render{width:min(560px,100%);aspect-ratio:16/9;margin:var(--space-xxl) auto 0;border-radius:var(--rounded-sm);background:linear-gradient(0deg,#e9e9ec,#ffffff);box-shadow:var(--shadow-product)}
+.tile-dark .product-render{background:linear-gradient(0deg,#3a3a3d,#57575b)}
+.utility-card{background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:var(--rounded-lg);padding:var(--space-lg)}
+.utility-card .thumb{aspect-ratio:1/1;border-radius:var(--rounded-sm);background:var(--color-canvas-parchment);margin-bottom:var(--space-md)}
+.utility-card .price{color:var(--color-ink-muted-80)}
+.chip{display:inline-flex;align-items:center;gap:var(--space-xs);background:var(--color-canvas);color:var(--color-ink);font:400 14px/1.43 var(--font-text);letter-spacing:-.224px;border:1px solid var(--color-hairline);border-radius:var(--rounded-pill);padding:12px 16px;cursor:pointer}
+.chip.selected{border:2px solid var(--color-primary-focus);padding:11px 15px}
+.search{display:flex;align-items:center;gap:var(--space-xs);height:44px;background:var(--color-canvas);border:var(--border-hairline);border-radius:var(--rounded-pill);padding:12px 20px;max-width:420px}
+.search input{border:0;outline:0;background:transparent;font:400 17px/1.47 var(--font-text);letter-spacing:-.374px;color:var(--color-ink);width:100%}
+.search input::placeholder{color:var(--color-ink-muted-48)}
+.sticky-bar{display:flex;align-items:center;justify-content:space-between;height:64px;padding:12px 32px;background:rgba(245,245,247,.8);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:var(--border-hairline);border-radius:var(--rounded-sm)}
+.footer{background:var(--color-canvas-parchment);color:var(--color-ink-muted-80);padding:64px 0}
+.footer h4{color:var(--color-ink);margin-bottom:var(--space-xs)}
+.footer ul{list-style:none;margin:0;padding:0}
+.footer li a{color:var(--color-ink-muted-80)}
+.footer .legal{margin-top:var(--space-xl);padding-top:var(--space-md);border-top:1px solid var(--color-hairline);color:var(--color-ink-muted-48)}
+
+/* =========================================================
+   6. 가이드 전용 프레젠테이션 스타일 (스와치·표 등)
+   ========================================================= */
+.swatch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-md)}
+.swatch{border:1px solid var(--color-hairline);border-radius:var(--rounded-lg);overflow:hidden;background:var(--color-canvas);cursor:pointer;transition:transform .12s}
+.swatch:active{transform:scale(.97)}
+.swatch .chip-color{height:84px}
+.swatch .meta{padding:var(--space-sm) var(--space-md)}
+.swatch .name{color:var(--color-ink)}
+.swatch .hex{font:400 12px/1.4 var(--font-mono);letter-spacing:0;color:var(--color-ink-muted-48);margin-top:2px}
+.swatch .token{font:400 11px/1.4 var(--font-mono);letter-spacing:0;color:var(--color-ink-muted-48)}
+.on-dark .swatch{background:var(--color-surface-tile-2);border-color:rgba(255,255,255,.1)}
+.on-dark .swatch .name{color:var(--color-on-dark)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:var(--space-sm) var(--space-md);border-bottom:1px solid var(--color-hairline);vertical-align:top}
+th{color:var(--color-ink-muted-48);font:700 12px/1.4 var(--font-text);letter-spacing:.2px;text-transform:uppercase}
+.type-row td:first-child{width:52%}
+.spacing-bar{height:24px;background:var(--color-primary);border-radius:var(--rounded-xs)}
+.radius-demo{width:88px;height:88px;background:var(--color-canvas);border:1px solid var(--color-hairline)}
+.demo-box{border:1px dashed var(--color-hairline);border-radius:var(--rounded-lg);padding:var(--space-lg);display:flex;flex-wrap:wrap;gap:var(--space-sm);align-items:center;background:var(--color-canvas)}
+.demo-box.dark{background:var(--color-surface-tile-1);border-color:rgba(255,255,255,.15)}
+.dodont{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg)}
+.dodont .col{border-radius:var(--rounded-lg);padding:var(--space-lg);border:1px solid var(--color-hairline)}
+.dodont .col h3{margin-bottom:var(--space-md)}
+.dodont ul{margin:0;padding-left:20px}
+.dodont li+li{margin-top:var(--space-xs)}
+.dodont .do h3{color:var(--status-free)}
+.dodont .dont h3{color:var(--status-crowded)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:var(--color-ink);color:var(--color-on-dark);padding:10px 18px;border-radius:var(--rounded-pill);font:400 14px/1.29 var(--font-text);transition:all .2s;pointer-events:none;z-index:50}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.status{display:inline-flex;align-items:center;gap:6px;font:700 14px/1.29 var(--font-text);letter-spacing:-.224px}
+.status::before{content:"";width:10px;height:10px;border-radius:50%;background:currentColor}
+.status-free{color:var(--status-free)}
+.status-normal{color:var(--status-normal)}
+.status-crowded{color:var(--status-crowded)}
+.status-uncertain{color:var(--status-uncertain)}
+.status-none{color:var(--status-none)}
+.vehicle-card{background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:var(--rounded-lg);padding:var(--space-lg)}
+.vehicle-card .row{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-sm)}
+.vehicle-card .big{font:700 40px/1.1 var(--font-display);color:var(--color-ink)}
+.badge{display:inline-block;font:700 12px/1 var(--font-text);letter-spacing:0;padding:6px 10px;border-radius:var(--rounded-pill);background:var(--color-canvas-parchment);color:var(--color-ink-muted-80)}
+.toc{display:flex;flex-wrap:wrap;gap:var(--space-xs) var(--space-md)}
+
+/* =========================================================
+   7. 반응형 — DESIGN.md breakpoints
+   ========================================================= */
+@media (max-width:1068px){
+  .t-hero-display{font-size:40px}
+  .grid-4{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:833px){
+  .global-nav ul.links{display:none}
+  .sub-nav nav a:not(.btn){display:none}
+  .grid-3,.grid-4{grid-template-columns:repeat(2,1fr)}
+  .dodont{grid-template-columns:1fr}
+  .section{padding:var(--space-xxl) 0}
+}
+@media (max-width:640px){
+  .t-hero-display{font-size:34px}
+  .t-display-lg{font-size:32px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+  .container,.container-wide{padding:0 16px}
+  .product-tile{padding:var(--space-xxl) 16px}
+  .type-row td:first-child{width:auto}
+  table{display:block;overflow-x:auto}
+}
+@media (max-width:419px){
+  .t-hero-display{font-size:28px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 내비게이션 ============ -->
+<header class="global-nav">
+  <div class="inner t-nav-link">
+    <a class="brand" href="#top">잔여 공간 진단 서비스</a>
+    <ul class="links">
+      <li><a href="#principles">원칙</a></li>
+      <li><a href="#colors">색상</a></li>
+      <li><a href="#typography">타이포그래피</a></li>
+      <li><a href="#layout">간격·형태</a></li>
+      <li><a href="#components">컴포넌트</a></li>
+      <li><a href="#project">프로젝트 적용</a></li>
+      <li><a href="#dodont">Do / Don't</a></li>
+      <li><a href="#responsive">반응형</a></li>
+    </ul>
+    <a href="#tokens">토큰</a>
+  </div>
+</header>
+<div class="sub-nav">
+  <div class="inner">
+    <span class="t-tagline">Style Guide</span>
+    <nav class="t-button-utility">
+      <a href="#colors">색상</a>
+      <a href="#typography">글자</a>
+      <a href="#components">컴포넌트</a>
+      <a class="btn btn-primary" style="min-height:32px;padding:6px 16px;font-size:14px" href="#tokens">토큰 복사</a>
+    </nav>
+  </div>
+</div>
+
+<!-- ============ 히어로 ============ -->
+<section id="top" class="product-tile" style="background:var(--color-canvas)">
+  <div class="container stack">
+    <p class="t-caption muted">Apple 디자인 분석 기반 · <code>npx getdesign@latest add apple</code> · 2026-09-28</p>
+    <h1 class="t-hero-display">제품이 말하게 하라.<br>UI는 물러선다.</h1>
+    <p class="t-lead muted">대전 대중교통 잔여 공간 진단 서비스의 화면 언어.<br>단 하나의 파란색, 17px 본문, 그림자 없는 카드, 색으로 나누는 구간.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#components">컴포넌트 보기</a>
+      <a class="btn btn-secondary" href="#tokens">토큰 보기</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 1. 원칙 ============ -->
+<section id="principles" class="section parchment">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">01 · 원칙</p>
+      <h2 class="t-display-lg">여덟 가지 핵심 특성</h2>
+      <p class="t-body">Apple 웹의 다섯 페이지(홈·환경·스토어·iPhone 구매·액세서리)를 분석해 얻은 규칙이다. 이 프로젝트의 시연 웹과 관리자 화면은 같은 규칙을 다른 볼륨으로 쓴다.</p>
+    </div>
+    <div class="grid grid-2">
+      <div class="utility-card stack"><h3 class="t-body-strong">사진 우선</h3><p class="t-caption muted">UI는 뒤로 물러나고 콘텐츠(이 프로젝트에서는 진단 결과 숫자)가 앞에 선다.</p></div>
+      <div class="utility-card stack"><h3 class="t-body-strong">색으로 나눈 구간</h3><p class="t-caption muted">흰색·양피지색과 near-black 타일이 교대한다. 선이나 그림자 대신 배경색 변화가 구분선이다.</p></div>
+      <div class="utility-card stack"><h3 class="t-body-strong">단 하나의 파란색</h3><p class="t-caption muted">모든 상호작용 요소는 <code>--color-primary</code> #0066cc. 두 번째 브랜드 색은 없다.</p></div>
+      <div class="utility-card stack"><h3 class="t-body-strong">두 가지 버튼 문법</h3><p class="t-caption muted">행동은 pill(완전 둥근 캡슐), 유틸리티는 8px 직각. 그 사이 값은 쓰지 않는다.</p></div>
+      <div class="utility-card stack"><h3 class="t-body-strong">타이트한 헤드라인</h3><p class="t-caption muted">Display 크기에 음수 letter-spacing. 나눔바른고딕 Bold(700) 하나로 헤드라인을 세운다.</p></div>
+      <div class="utility-card stack"><h3 class="t-body-strong">그림자는 하나</h3><p class="t-caption muted">시스템 전체에서 유일한 그림자는 제품 이미지 아래. 카드·버튼·글자에는 절대 없다.</p></div>
+      <div class="utility-card stack"><h3 class="t-body-strong">두 줄 내비게이션</h3><p class="t-caption muted">44px 검정 global-nav + 52px 반투명 sub-nav. 우측에 항상 주요 행동 버튼.</p></div>
+      <div class="utility-card stack"><h3 class="t-body-strong">예측 가능한 리듬</h3><p class="t-caption muted">밝은 히어로 → 어두운 타일 → 밝은 유틸리티 → 어두운 타일 → 양피지 푸터.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. 색상 ============ -->
+<section id="colors" class="section">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">02 · 색상</p>
+      <h2 class="t-display-lg">색상 토큰</h2>
+      <p class="t-body">스와치를 클릭하면 CSS 변수명이 복사된다. 코드에서 hex 를 직접 쓰지 말고 변수를 참조한다.</p>
+    </div>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">브랜드 · 액센트</h3>
+    <div class="swatch-grid" style="margin-bottom:var(--space-xxl)">
+      <div class="swatch" data-token="--color-primary"><div class="chip-color" style="background:#0066cc"></div><div class="meta"><div class="name t-caption-strong">Action Blue</div><div class="hex">#0066cc</div><div class="token">--color-primary</div></div></div>
+      <div class="swatch" data-token="--color-primary-focus"><div class="chip-color" style="background:#0071e3"></div><div class="meta"><div class="name t-caption-strong">Focus Blue</div><div class="hex">#0071e3</div><div class="token">--color-primary-focus</div></div></div>
+      <div class="swatch" data-token="--color-primary-on-dark"><div class="chip-color" style="background:#2997ff"></div><div class="meta"><div class="name t-caption-strong">Sky Link Blue (어두운 배경 전용)</div><div class="hex">#2997ff</div><div class="token">--color-primary-on-dark</div></div></div>
+    </div>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">표면</h3>
+    <div class="swatch-grid" style="margin-bottom:var(--space-xxl)">
+      <div class="swatch" data-token="--color-canvas"><div class="chip-color" style="background:#ffffff;border-bottom:1px solid var(--color-hairline)"></div><div class="meta"><div class="name t-caption-strong">Canvas</div><div class="hex">#ffffff</div><div class="token">--color-canvas</div></div></div>
+      <div class="swatch" data-token="--color-canvas-parchment"><div class="chip-color" style="background:#f5f5f7"></div><div class="meta"><div class="name t-caption-strong">Parchment</div><div class="hex">#f5f5f7</div><div class="token">--color-canvas-parchment</div></div></div>
+      <div class="swatch" data-token="--color-surface-pearl"><div class="chip-color" style="background:#fafafc"></div><div class="meta"><div class="name t-caption-strong">Pearl (보조 버튼)</div><div class="hex">#fafafc</div><div class="token">--color-surface-pearl</div></div></div>
+      <div class="swatch" data-token="--color-surface-tile-1"><div class="chip-color" style="background:#272729"></div><div class="meta"><div class="name t-caption-strong">Dark Tile 1</div><div class="hex">#272729</div><div class="token">--color-surface-tile-1</div></div></div>
+      <div class="swatch" data-token="--color-surface-tile-2"><div class="chip-color" style="background:#2a2a2c"></div><div class="meta"><div class="name t-caption-strong">Dark Tile 2</div><div class="hex">#2a2a2c</div><div class="token">--color-surface-tile-2</div></div></div>
+      <div class="swatch" data-token="--color-surface-tile-3"><div class="chip-color" style="background:#252527"></div><div class="meta"><div class="name t-caption-strong">Dark Tile 3</div><div class="hex">#252527</div><div class="token">--color-surface-tile-3</div></div></div>
+      <div class="swatch" data-token="--color-surface-black"><div class="chip-color" style="background:#000000"></div><div class="meta"><div class="name t-caption-strong">Black (global-nav)</div><div class="hex">#000000</div><div class="token">--color-surface-black</div></div></div>
+      <div class="swatch" data-token="--color-surface-chip-translucent"><div class="chip-color" style="background:#d2d2d7"></div><div class="meta"><div class="name t-caption-strong">Chip Gray (64% 알파)</div><div class="hex">#d2d2d7</div><div class="token">--color-surface-chip-translucent</div></div></div>
+    </div>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">텍스트 · 헤어라인</h3>
+    <div class="swatch-grid">
+      <div class="swatch" data-token="--color-ink"><div class="chip-color" style="background:#1d1d1f"></div><div class="meta"><div class="name t-caption-strong">Ink (모든 본문)</div><div class="hex">#1d1d1f</div><div class="token">--color-ink</div></div></div>
+      <div class="swatch" data-token="--color-ink-muted-80"><div class="chip-color" style="background:#333333"></div><div class="meta"><div class="name t-caption-strong">Ink Muted 80</div><div class="hex">#333333</div><div class="token">--color-ink-muted-80</div></div></div>
+      <div class="swatch" data-token="--color-ink-muted-48"><div class="chip-color" style="background:#7a7a7a"></div><div class="meta"><div class="name t-caption-strong">Ink Muted 48 (비활성·법적 문구)</div><div class="hex">#7a7a7a</div><div class="token">--color-ink-muted-48</div></div></div>
+      <div class="swatch" data-token="--color-body-muted"><div class="chip-color" style="background:#cccccc"></div><div class="meta"><div class="name t-caption-strong">Body Muted (어두운 배경 보조 글)</div><div class="hex">#cccccc</div><div class="token">--color-body-muted</div></div></div>
+      <div class="swatch" data-token="--color-divider-soft"><div class="chip-color" style="background:#f0f0f0"></div><div class="meta"><div class="name t-caption-strong">Divider Soft</div><div class="hex">#f0f0f0</div><div class="token">--color-divider-soft</div></div></div>
+      <div class="swatch" data-token="--color-hairline"><div class="chip-color" style="background:#e0e0e0"></div><div class="meta"><div class="name t-caption-strong">Hairline (카드 1px 테두리)</div><div class="hex">#e0e0e0</div><div class="token">--color-hairline</div></div></div>
+    </div>
+    <p class="t-caption muted" style="margin-top:var(--space-lg)">그라디언트 토큰은 없다. 깊이감은 사진에서 오고, CSS 그라디언트는 장식으로 쓰지 않는다.</p>
+  </div>
+</section>
+
+<!-- ============ 3. 타이포그래피 ============ -->
+<section id="typography" class="section tile-dark on-dark">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">03 · 타이포그래피</p>
+      <h2 class="t-display-lg">글자 위계</h2>
+      <p class="t-body">모든 글자는 <strong>나눔바른고딕</strong> 하나로 통일한다. 네이버 웹폰트 CSS 로 불러오며 Light 300 · Regular 400 · Bold 700 세 굵기를 제공한다. Apple 원본의 600 은 700 으로 매핑했다. 500 은 쓰지 않는다.</p>
+    </div>
+    <table>
+      <thead><tr><th>샘플</th><th>토큰</th><th>크기 / 굵기 / 행간 / 자간</th><th>용도</th></tr></thead>
+      <tbody>
+        <tr class="type-row"><td><span class="t-hero-display">잔여 공간 65%</span></td><td><code>.t-hero-display</code></td><td>56px / 700 / 1.07 / -0.28px</td><td>히어로 헤드라인</td></tr>
+        <tr class="type-row"><td><span class="t-display-lg">다음 차를 기다리면</span></td><td><code>.t-display-lg</code></td><td>40px / 700 / 1.10 / 0</td><td>타일 헤드라인, 카드의 큰 숫자</td></tr>
+        <tr class="type-row"><td><span class="t-display-md">정류장 화면</span></td><td><code>.t-display-md</code></td><td>34px / 700 / 1.47 / -0.374px</td><td>섹션 제목</td></tr>
+        <tr class="type-row"><td><span class="t-lead">4분 뒤 도착, 착석 가능</span></td><td><code>.t-lead</code></td><td>28px / 400 / 1.14 / 0.196px</td><td>타일 부제</td></tr>
+        <tr class="type-row"><td><span class="t-lead-airy">개인을 식별하지 않습니다.</span></td><td><code>.t-lead-airy</code></td><td>24px / 300 / 1.5 / 0</td><td>가벼운 리드 문단 (희소한 300)</td></tr>
+        <tr class="type-row"><td><span class="t-tagline">충남대 정류장</span></td><td><code>.t-tagline</code></td><td>21px / 700 / 1.19 / 0.231px</td><td>sub-nav 카테고리명, 소제목</td></tr>
+        <tr class="type-row"><td><span class="t-body-strong">1234호 · 혼잡</span></td><td><code>.t-body-strong</code></td><td>17px / 700 / 1.24 / -0.374px</td><td>인라인 강조, 카드 제목</td></tr>
+        <tr class="type-row"><td><span class="t-body">이 수치는 통계적 추정치이며 실측 시각은 09:41 입니다.</span></td><td><code>.t-body</code></td><td>17px / 400 / 1.47 / -0.374px</td><td>기본 문단 (16px 아님)</td></tr>
+        <tr class="type-row"><td><span class="t-dense-link">노선 안내 · 정류장 안내 · 운영 기관</span></td><td><code>.t-dense-link</code></td><td>17px / 400 / 2.41 / 0</td><td>푸터 링크 목록</td></tr>
+        <tr class="type-row"><td><span class="t-caption">실측 시각 09:41 · 유효 8분</span></td><td><code>.t-caption</code></td><td>14px / 400 / 1.43 / -0.224px</td><td>보조 캡션, 버튼 글자</td></tr>
+        <tr class="type-row"><td><span class="t-caption-strong">시연 모드</span></td><td><code>.t-caption-strong</code></td><td>14px / 700 / 1.29 / -0.224px</td><td>강조 캡션, 푸터 열 제목</td></tr>
+        <tr class="type-row"><td><span class="t-button-large">진단 시작</span></td><td><code>.t-button-large</code></td><td>18px / 300 / 1.0 / 0</td><td>스토어 히어로 CTA</td></tr>
+        <tr class="type-row"><td><span class="t-button-utility">로그인</span></td><td><code>.t-button-utility</code></td><td>14px / 400 / 1.29 / -0.224px</td><td>유틸리티·내비 버튼</td></tr>
+        <tr class="type-row"><td><span class="t-fine-print">추정치 고지: 결과는 면적 기반 추정입니다.</span></td><td><code>.t-fine-print</code></td><td>12px / 400 / 1.0 / -0.12px</td><td>작은 글씨, 푸터 본문</td></tr>
+        <tr class="type-row"><td><span class="t-micro-legal">© 2026 대전 잔여 공간 진단 서비스</span></td><td><code>.t-micro-legal</code></td><td>10px / 400 / 1.3 / -0.08px</td><td>법적 고지</td></tr>
+        <tr class="type-row"><td><span class="t-nav-link">정류장 · 노선 · 관리</span></td><td><code>.t-nav-link</code></td><td>12px / 400 / 1.0 / -0.12px</td><td>global-nav 메뉴</td></tr>
+      </tbody>
+    </table>
+    <div class="grid grid-2" style="margin-top:var(--space-xxl)">
+      <div class="stack"><h3 class="t-body-strong">원칙</h3>
+        <ul class="t-caption" style="color:var(--color-body-muted);margin:0;padding-left:20px">
+          <li>17px 이상 헤드라인은 음수 자간. 12px 이하에서는 쓰지 않는다.</li>
+          <li>본문은 17px. 16px 이 아니다.</li>
+          <li>헤드라인 굵기는 700. 나눔바른고딕에 600 이 없어 Apple 의 600 을 700 으로 매핑했다.</li>
+          <li>본문 행간 1.47 아래로 줄이지 않는다.</li>
+        </ul></div>
+      <div class="stack"><h3 class="t-body-strong">글꼴 로드</h3>
+        <ul class="t-caption" style="color:var(--color-body-muted);margin:0;padding-left:20px">
+          <li>네이버 배포 woff 를 <code>@font-face</code> 로 300 / 400 / 700 세 굵기를 <code>NanumBarunGothic</code> 한 이름에 묶었다. 네이버 기본 CSS 는 굵기마다 이름이 달라 그대로 쓰면 굵기가 합성된다.</li>
+          <li>스택 뒤에 <code>system-ui</code> 를 두어 오프라인에서도 깨지지 않게 한다.</li>
+          <li>오프라인 시연이면 폰트 파일을 로컬에 두고 <code>@font-face</code> 로 바꾼다.</li>
+        </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. 간격·형태·깊이 ============ -->
+<section id="layout" class="section">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">04 · 간격 · 형태 · 깊이</p>
+      <h2 class="t-display-lg">여백이 받침대다</h2>
+      <p class="t-body">기본 단위 8px. 타일 안쪽 수직 여백 80px, 카드 안쪽 24px, 버튼 8~11px × 15~22px. 타일 사이 간격은 0 이고 배경색 변화가 구분한다.</p>
+    </div>
+    <div class="grid grid-2">
+      <div>
+        <h3 class="t-tagline" style="margin-bottom:var(--space-md)">간격</h3>
+        <table>
+          <thead><tr><th>토큰</th><th>값</th><th style="width:45%">시각</th></tr></thead>
+          <tbody>
+            <tr><td><code>--space-xxs</code></td><td>4px</td><td><div class="spacing-bar" style="width:4px"></div></td></tr>
+            <tr><td><code>--space-xs</code></td><td>8px</td><td><div class="spacing-bar" style="width:8px"></div></td></tr>
+            <tr><td><code>--space-sm</code></td><td>12px</td><td><div class="spacing-bar" style="width:12px"></div></td></tr>
+            <tr><td><code>--space-md</code></td><td>17px</td><td><div class="spacing-bar" style="width:17px"></div></td></tr>
+            <tr><td><code>--space-lg</code></td><td>24px</td><td><div class="spacing-bar" style="width:24px"></div></td></tr>
+            <tr><td><code>--space-xl</code></td><td>32px</td><td><div class="spacing-bar" style="width:32px"></div></td></tr>
+            <tr><td><code>--space-xxl</code></td><td>48px</td><td><div class="spacing-bar" style="width:48px"></div></td></tr>
+            <tr><td><code>--space-section</code></td><td>80px</td><td><div class="spacing-bar" style="width:80px"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3 class="t-tagline" style="margin-bottom:var(--space-md)">모서리</h3>
+        <div class="demo-box" style="gap:var(--space-lg)">
+          <div style="text-align:center"><div class="radius-demo" style="border-radius:0"></div><div class="t-fine-print muted" style="margin-top:6px">none 0</div></div>
+          <div style="text-align:center"><div class="radius-demo" style="border-radius:5px"></div><div class="t-fine-print muted" style="margin-top:6px">xs 5</div></div>
+          <div style="text-align:center"><div class="radius-demo" style="border-radius:8px"></div><div class="t-fine-print muted" style="margin-top:6px">sm 8</div></div>
+          <div style="text-align:center"><div class="radius-demo" style="border-radius:11px"></div><div class="t-fine-print muted" style="margin-top:6px">md 11</div></div>
+          <div style="text-align:center"><div class="radius-demo" style="border-radius:18px"></div><div class="t-fine-print muted" style="margin-top:6px">lg 18</div></div>
+          <div style="text-align:center"><div class="radius-demo" style="border-radius:9999px;width:140px"></div><div class="t-fine-print muted" style="margin-top:6px">pill</div></div>
+        </div>
+        <p class="t-caption muted" style="margin-top:var(--space-md)">문법을 섞지 않는다. 유틸리티 버튼 sm(8), 카드 lg(18), 행동 버튼 pill. 타일은 none. md(11)는 Pearl 버튼에만.</p>
+
+        <h3 class="t-tagline" style="margin:var(--space-xl) 0 var(--space-md)">깊이</h3>
+        <table>
+          <thead><tr><th>단계</th><th>처리</th><th>용도</th></tr></thead>
+          <tbody>
+            <tr><td>Flat</td><td>그림자·테두리 없음</td><td>타일, 내비, 푸터, 본문</td></tr>
+            <tr><td>Hairline</td><td><code>1px rgba(0,0,0,.08)</code></td><td>유틸리티 카드, sub-nav 구분</td></tr>
+            <tr><td>Backdrop blur</td><td>Parchment 80% + <code>blur(20px)</code></td><td>sub-nav, 하단 고정 바</td></tr>
+            <tr><td>Product shadow</td><td><code>rgba(0,0,0,.22) 3px 5px 30px</code></td><td><strong>제품 이미지에만.</strong> 시스템 유일의 그림자</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. 컴포넌트 ============ -->
+<section id="components" class="section parchment">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">05 · 컴포넌트</p>
+      <h2 class="t-display-lg">부품</h2>
+      <p class="t-body">Hover 는 문서화하지 않는다. 기본 상태와 Active(눌림) 상태만 정의한다. 모든 버튼의 눌림은 <code>transform: scale(0.95)</code>.</p>
+    </div>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">버튼</h3>
+    <div class="demo-box" style="margin-bottom:var(--space-sm)">
+      <button class="btn btn-primary">자세히 보기</button>
+      <button class="btn btn-secondary">구매하기</button>
+      <button class="btn btn-store-hero">진단 시작</button>
+      <button class="btn btn-dark-utility">로그인</button>
+      <button class="btn btn-pearl">비교하기</button>
+      <button class="btn btn-icon" aria-label="다음">›</button>
+      <button class="btn btn-primary" disabled>비활성</button>
+      <a class="text-link" href="#">텍스트 링크</a>
+    </div>
+    <div class="demo-box dark" style="margin-bottom:var(--space-md)">
+      <button class="btn btn-primary">어두운 배경에서도 Action Blue</button>
+      <a class="text-link-on-dark" href="#">어두운 배경 링크는 Sky Blue</a>
+    </div>
+    <table style="margin-bottom:var(--space-xxl)">
+      <thead><tr><th>클래스</th><th>배경 / 글자</th><th>글자 토큰</th><th>모서리</th><th>패딩</th><th>용도</th></tr></thead>
+      <tbody>
+        <tr><td><code>.btn-primary</code></td><td>primary / on-primary</td><td>body 17/400</td><td>pill</td><td>11 × 22</td><td>주요 행동. 브랜드 신호</td></tr>
+        <tr><td><code>.btn-secondary</code></td><td>transparent / primary, 1px primary</td><td>body 17/400</td><td>pill</td><td>11 × 22</td><td>두 번째 CTA (ghost pill)</td></tr>
+        <tr><td><code>.btn-store-hero</code></td><td>primary / on-primary</td><td>button-large 18/300</td><td>pill</td><td>14 × 28</td><td>히어로 대형 CTA, 드물게</td></tr>
+        <tr><td><code>.btn-dark-utility</code></td><td>ink / on-dark</td><td>button-utility 14/400</td><td>sm 8</td><td>8 × 15</td><td>로그인, 언어 등 유틸리티</td></tr>
+        <tr><td><code>.btn-pearl</code></td><td>pearl / ink-muted-80, 3px divider-soft</td><td>caption 14/400</td><td>md 11</td><td>8 × 14</td><td>카드 안 보조 버튼</td></tr>
+        <tr><td><code>.btn-icon</code></td><td>chip-gray 64% / ink</td><td>—</td><td>full</td><td>44 × 44</td><td>사진 위 원형 컨트롤</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">제품 타일 (구간)</h3>
+    <div class="grid grid-2" style="margin-bottom:var(--space-xxl)">
+      <div class="product-tile" style="background:var(--color-canvas);border:1px solid var(--color-hairline)">
+        <div class="stack"><h3 class="t-display-lg">현재 프레임 진단</h3><p class="t-lead muted">사진 한 장, 결과 한 줄.</p></div>
+        <div class="cta"><a class="btn btn-primary" href="#">자세히 보기</a><a class="btn btn-secondary" href="#">API 문서</a></div>
+        <div class="product-render"></div>
+        <p class="t-fine-print muted" style="margin-top:var(--space-md)"><code>.product-tile</code> light · 제품 이미지에만 그림자</p>
+      </div>
+      <div class="product-tile tile-dark on-dark">
+        <div class="stack"><h3 class="t-display-lg">후속 차량 여유도</h3><p class="t-lead" style="color:var(--color-body-muted)">다음 차를 기다리면 더 여유로울까.</p></div>
+        <div class="cta"><a class="btn btn-primary" href="#">자세히 보기</a><a class="text-link-on-dark t-body" href="#" style="align-self:center">응답 예시 ›</a></div>
+        <div class="product-render"></div>
+        <p class="t-fine-print" style="color:var(--color-body-muted);margin-top:var(--space-md)"><code>.product-tile.tile-dark</code> · 링크는 Sky Blue</p>
+      </div>
+    </div>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">유틸리티 카드 · 칩 · 검색</h3>
+    <div class="grid grid-3" style="margin-bottom:var(--space-lg)">
+      <div class="utility-card"><div class="thumb"></div><h4 class="t-body-strong">관심영역(ROI) 관리</h4><p class="t-body price">카메라별 다각형</p><a class="text-link t-body" href="#">열기 ›</a></div>
+      <div class="utility-card"><div class="thumb"></div><h4 class="t-body-strong">차량 제원</h4><p class="t-body price">유형별 정원·좌석</p><a class="text-link t-body" href="#">열기 ›</a></div>
+      <div class="utility-card"><div class="thumb"></div><h4 class="t-body-strong">혼잡 등급 기준</h4><p class="t-body price">여유 하한 · 혼잡 상한</p><a class="text-link t-body" href="#">열기 ›</a></div>
+    </div>
+    <div class="demo-box" style="margin-bottom:var(--space-lg)">
+      <button class="chip">버스 차내</button>
+      <button class="chip selected">승강장</button>
+      <button class="chip">전체</button>
+      <label class="search"><span aria-hidden="true" class="muted">⌕</span><input type="search" placeholder="정류장 또는 노선 검색"></label>
+    </div>
+    <p class="t-caption muted" style="margin-bottom:var(--space-xxl)"><code>.utility-card</code> white + 1px hairline + lg(18) + 24px 패딩, 그림자 없음 · <code>.chip.selected</code> 는 2px focus-blue 테두리 · <code>.search</code> 는 pill, 44px 높이</p>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">하단 고정 바</h3>
+    <div class="sticky-bar" style="margin-bottom:var(--space-lg)">
+      <span class="t-body">선택한 차량 <strong>5678호</strong> · 잔여 65%</span>
+      <button class="btn btn-primary">상세 보기</button>
+    </div>
+    <p class="t-caption muted"><code>.sticky-bar</code> Parchment 80% + backdrop blur, 64px, 12 × 32 패딩. 실제 사용 시 <code>position: fixed; bottom: 0</code></p>
+  </div>
+</section>
+
+<!-- ============ 6. 프로젝트 적용 ============ -->
+<section id="project" class="section">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">06 · 프로젝트 적용</p>
+      <h2 class="t-display-lg">혼잡 등급 상태 색 (확장 토큰)</h2>
+      <p class="t-body">Apple 원칙은 액센트 색 하나다. 그러나 이 서비스는 여유 / 보통 / 혼잡 / 판독 불확실 / 실측 없음을 시각으로 구분해야 하므로 <strong>상태 색 5개를 확장 토큰으로 추가</strong>했다. 상태 색은 정보 표시에만 쓰고, 클릭 가능한 요소에는 절대 쓰지 않는다. 클릭은 여전히 Action Blue 하나다.</p>
+    </div>
+    <div class="swatch-grid" style="margin-bottom:var(--space-xxl)">
+      <div class="swatch" data-token="--status-free"><div class="chip-color" style="background:#1d9a4f"></div><div class="meta"><div class="name t-caption-strong">여유</div><div class="hex">#1d9a4f</div><div class="token">--status-free</div></div></div>
+      <div class="swatch" data-token="--status-normal"><div class="chip-color" style="background:#c98a00"></div><div class="meta"><div class="name t-caption-strong">보통</div><div class="hex">#c98a00</div><div class="token">--status-normal</div></div></div>
+      <div class="swatch" data-token="--status-crowded"><div class="chip-color" style="background:#d0342c"></div><div class="meta"><div class="name t-caption-strong">혼잡</div><div class="hex">#d0342c</div><div class="token">--status-crowded</div></div></div>
+      <div class="swatch" data-token="--status-uncertain"><div class="chip-color" style="background:#7a7a7a"></div><div class="meta"><div class="name t-caption-strong">판독 불확실</div><div class="hex">#7a7a7a</div><div class="token">--status-uncertain</div></div></div>
+      <div class="swatch" data-token="--status-none"><div class="chip-color" style="background:#cccccc"></div><div class="meta"><div class="name t-caption-strong">실측 없음</div><div class="hex">#cccccc</div><div class="token">--status-none</div></div></div>
+    </div>
+
+    <h3 class="t-tagline" style="margin-bottom:var(--space-md)">차량 카드 예시 (시연 웹 장면 2~5)</h3>
+    <div class="grid grid-4">
+      <div class="vehicle-card stack">
+        <div class="row"><span class="t-body-strong">1234호</span><span class="t-caption muted">2분 후</span></div>
+        <div class="big">15%</div>
+        <div class="status status-crowded">혼잡 · 앉을 자리 없음</div>
+        <p class="t-caption muted">실측 09:41 · 유효 8분</p>
+        <span class="badge">시연 모드</span>
+      </div>
+      <div class="vehicle-card stack">
+        <div class="row"><span class="t-body-strong">5678호</span><span class="t-caption muted">6분 후</span></div>
+        <div class="big">65%</div>
+        <div class="status status-free">여유 · 착석 가능</div>
+        <p class="t-caption muted">실측 09:41 · 유효 8분</p>
+        <span class="badge">시연 모드</span>
+      </div>
+      <div class="vehicle-card stack">
+        <div class="row"><span class="t-body-strong">9012호</span><span class="t-caption muted">11분 후</span></div>
+        <div class="big muted" style="font-size:28px">참고 40%</div>
+        <div class="status status-uncertain">판독 불확실 · 영상 흐림</div>
+        <p class="t-caption muted">경고 blur · 신뢰도 낮음</p>
+        <span class="badge">시연 모드</span>
+      </div>
+      <div class="vehicle-card stack">
+        <div class="row"><span class="t-body-strong">3456호</span><span class="t-caption muted">15분 후</span></div>
+        <div class="big muted" style="font-size:28px">—</div>
+        <div class="status status-none">실측 없음</div>
+        <p class="t-caption muted">도착 시각만 제공</p>
+        <span class="badge">추정 안 함</span>
+      </div>
+    </div>
+    <p class="t-caption muted" style="margin-top:var(--space-lg)">카드는 <code>.utility-card</code> 문법(hairline, lg 18, 24px). 큰 숫자는 <code>.t-display-lg</code>. 상태는 점 + 굵은 캡션. 추정치 고지 문구는 <code>.t-fine-print</code> 로 카드 하단 또는 화면 하단에 항상 노출한다.</p>
+  </div>
+</section>
+
+<!-- ============ 7. Do / Don't ============ -->
+<section id="dodont" class="section parchment">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">07 · Do / Don't</p>
+      <h2 class="t-display-lg">지킬 것과 피할 것</h2>
+    </div>
+    <div class="dodont">
+      <div class="col do" style="background:var(--color-canvas)">
+        <h3 class="t-tagline">Do</h3>
+        <ul class="t-body">
+          <li>모든 상호작용 요소에 <code>--color-primary</code> 하나만 쓴다.</li>
+          <li>헤드라인은 hero-display / display-lg, 700, 음수 자간.</li>
+          <li>본문은 17px / 400 / 1.47.</li>
+          <li>구간은 밝은 타일과 어두운 타일을 교대해 나눈다.</li>
+          <li>pill 은 행동에만. 칩, 검색, 고정 바 CTA 포함.</li>
+          <li>그림자는 제품 이미지에만.</li>
+          <li>모든 버튼 눌림은 <code>scale(0.95)</code>.</li>
+          <li>global-nav 는 순수 검정. 페이지에서 검정이 나오는 유일한 곳.</li>
+          <li>혼잡 상태 색은 정보 표시에만 쓴다.</li>
+        </ul>
+      </div>
+      <div class="col dont" style="background:var(--color-canvas)">
+        <h3 class="t-tagline">Don't</h3>
+        <ul class="t-body">
+          <li>두 번째 액센트 색을 만들지 않는다. 상태 색을 버튼에 쓰지 않는다.</li>
+          <li>카드·버튼·글자에 그림자를 넣지 않는다.</li>
+          <li>장식용 그라디언트 배경을 쓰지 않는다.</li>
+          <li>굵기 500·600 을 쓰지 않는다. 나눔바른고딕 사다리는 300 / 400 / 700.</li>
+          <li>타일 모서리를 둥글게 하지 않는다.</li>
+          <li>본문 행간을 1.47 아래로 줄이지 않는다.</li>
+          <li>모서리 문법을 섞지 않는다. sm / lg / pill 외에는 Pearl 의 md 만.</li>
+          <li>Sky Blue 를 밝은 배경에 쓰지 않는다.</li>
+          <li>Hover 상태를 문서화하지 않는다.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8. 반응형 ============ -->
+<section id="responsive" class="section">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">08 · 반응형</p>
+      <h2 class="t-display-lg">브레이크포인트</h2>
+      <p class="t-body">구조적으로 중요한 지점은 1440(콘텐츠 잠금), 1068, 833, 734, 640, 480. 터치 타깃 최소 44 × 44px.</p>
+    </div>
+    <table>
+      <thead><tr><th>이름</th><th>폭</th><th>주요 변화</th></tr></thead>
+      <tbody>
+        <tr><td>Small phone</td><td>≤ 419</td><td>단일 열. sub-nav 는 카테고리명 + CTA 만. 히어로 28px</td></tr>
+        <tr><td>Phone</td><td>420–640</td><td>단일 열. 히어로 34px. 제품 이미지 타일 폭의 80%</td></tr>
+        <tr><td>Large phone</td><td>641–735</td><td>타일 수직 여백 80 → 48px</td></tr>
+        <tr><td>Tablet portrait</td><td>736–833</td><td>global-nav 햄버거. sub-nav 칩 숨김</td></tr>
+        <tr><td>Tablet landscape</td><td>834–1023</td><td>global-nav 복원. 3열 → 2열</td></tr>
+        <tr><td>Small desktop</td><td>1024–1068</td><td>히어로 40px. 타일 2/3 폭</td></tr>
+        <tr><td>Desktop</td><td>1069–1440</td><td>전체 레이아웃. 4~5열 그리드</td></tr>
+        <tr><td>Wide</td><td>≥ 1441</td><td>1440px 에서 콘텐츠 잠금</td></tr>
+      </tbody>
+    </table>
+    <p class="t-caption muted" style="margin-top:var(--space-lg)">유틸리티 그리드 축소: 5열 → 4열(1440) → 3열(1068) → 2열(834) → 1열(640). 히어로 글자: 56 → 40(1068) → 34(640) → 28(419).</p>
+  </div>
+</section>
+
+<!-- ============ 9. 토큰 원문 ============ -->
+<section id="tokens" class="section tile-dark on-dark">
+  <div class="container-wide">
+    <div class="section-head">
+      <p class="eyebrow t-caption-strong">09 · 토큰</p>
+      <h2 class="t-display-lg">CSS 변수 원문</h2>
+      <p class="t-body">아래 블록을 프로젝트의 전역 스타일시트 <code>:root</code> 에 그대로 붙인다. 원본 값은 같은 폴더의 <code>DESIGN.md</code> 에 있다.</p>
+    </div>
+    <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md)">
+      <button class="btn btn-primary" id="copyTokens">토큰 전체 복사</button>
+      <a class="btn btn-secondary" style="color:var(--color-primary-on-dark);border-color:var(--color-primary-on-dark)" href="DESIGN.md">DESIGN.md 열기</a>
+    </div>
+    <pre id="tokenBlock" style="margin:0;padding:var(--space-lg);background:var(--color-surface-tile-3);border-radius:var(--rounded-lg);overflow:auto;font:400 12.5px/1.6 var(--font-mono);letter-spacing:0;color:var(--color-body-muted)"></pre>
+  </div>
+</section>
+
+<!-- ============ 푸터 ============ -->
+<footer class="footer">
+  <div class="container-wide">
+    <div class="grid grid-4">
+      <div><h4 class="t-caption-strong">문서</h4><ul class="t-dense-link"><li><a href="style-guide-manual.md">스타일 가이드 매뉴얼</a></li><li><a href="DESIGN.md">DESIGN.md 원본</a></li><li><a href="UC_00_개요_잔여공간진단서비스.md">UC 개요</a></li></ul></div>
+      <div><h4 class="t-caption-strong">화면</h4><ul class="t-dense-link"><li><a href="#components">컴포넌트</a></li><li><a href="#project">차량 카드</a></li><li><a href="#responsive">반응형</a></li></ul></div>
+      <div><h4 class="t-caption-strong">토큰</h4><ul class="t-dense-link"><li><a href="#colors">색상</a></li><li><a href="#typography">타이포그래피</a></li><li><a href="#layout">간격·형태</a></li></ul></div>
+      <div><h4 class="t-caption-strong">출처</h4><ul class="t-dense-link"><li><a href="https://getdesign.md" rel="noopener">getdesign.md</a></li><li class="t-caption muted" style="line-height:1.43">Apple 디자인 분석 (alpha)</li></ul></div>
+    </div>
+    <div class="legal t-fine-print">대전 대중교통 비식별 군중 밀집도·잔여 공간 진단 서비스 · 스타일 가이드 v0.1 · 2026-09-28 · Apple 은 참조 대상이며 본 문서는 Apple Inc. 와 무관합니다.</div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">복사됨</div>
+
+<script>
+(function(){
+  // 토큰 블록: :root 선언을 그대로 추출해 표시
+  var css = '';
+  try{
+    var sheets = document.styleSheets;
+    for (var i=0;i<sheets.length;i++){
+      var rules = sheets[i].cssRules || [];
+      for (var j=0;j<rules.length;j++){
+        if (rules[j].selectorText === ':root'){ css = rules[j].cssText; break; }
+      }
+      if (css) break;
+    }
+  }catch(e){}
+  if (!css){ css = ':root { /* 브라우저가 스타일시트 접근을 막았습니다. 소스 상단의 :root 블록을 복사하세요. */ }'; }
+  css = css.replace(/;\s*/g, ';\n  ').replace('{ ', '{\n  ').replace(/\n\s*}$/,'\n}');
+  var block = document.getElementById('tokenBlock');
+  block.textContent = css;
+
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('show'); }, 1400);
+  }
+  function copy(text, msg){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast(msg); }, function(){ toast('복사 실패'); });
+    } else {
+      var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); toast(msg); }catch(e){ toast('복사 실패'); }
+      document.body.removeChild(ta);
+    }
+  }
+  document.querySelectorAll('.swatch[data-token]').forEach(function(el){
+    el.addEventListener('click', function(){ copy('var(' + el.dataset.token + ')', el.dataset.token + ' 복사됨'); });
+  });
+  document.getElementById('copyTokens').addEventListener('click', function(){ copy(block.textContent, '토큰 전체 복사됨'); });
+})();
+</script>
+</body>
+</html>

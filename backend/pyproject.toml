@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cv-api"
+version = "0.1.0"
+description = "대전 대중교통 비식별 군중 밀집도·잔여 공간 진단 API (001-crowd-vacancy-api)"
+requires-python = ">=3.9"
+readme = "README.md"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "python-multipart>=0.0.9",
+  "sqlalchemy>=2.0",
+  "numpy>=1.24",
+  "opencv-python-headless>=4.9",
+  "shapely>=2.0",
+  "httpx>=0.27",
+  "pillow>=10",
+  "pillow-heif>=0.18",   # 휴대폰 HEIC 사진 디코드 (웹 백엔드 규격 변환)
+]
+
+[project.optional-dependencies]
+# 검출 모델 (Clarifications Q12: MaxTheTechy/yolo — Ultralytics YOLOv8n). 프로세스 안 적재용. 무거워서 분리
+vision = ["ultralytics>=8.2", "torch>=2.1", "torchvision"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5", "pyyaml"]
+# 운영 DBMS (research R2) + T073 검증: pgserver 는 포트 없이 유닉스 소켓으로 도는 PostgreSQL 바이너리 (tests/test_ddl_postgres.py)
+postgres = ["psycopg[binary]>=3.1"]
+pgtest = ["psycopg[binary]>=3.1", "pgserver>=0.1"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cv_api*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"

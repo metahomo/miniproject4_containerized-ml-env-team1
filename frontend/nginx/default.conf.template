@@ -1,0 +1,49 @@
+# 웹 프론트(9504) — 빌드한 화면(dist/)을 내주고, API 는 백엔드로 넘긴다. vite.config.ts 의 dev 프록시와 같은 규칙.
+# ${BACKEND_WEB}·${BACKEND_API} 는 컨테이너 시작 때 환경변수로 채워진다(nginx 이미지의 templates 기능). 기본값은 Dockerfile.
+
+# 접근 로그에 클라이언트 IP 를 남기지 않는다 — 백엔드 접근 로그와 같은 규칙 (API 점검 D6)
+log_format cv_noip '$time_local "$request" $status $body_bytes_sent $request_time';
+
+server {
+    listen 9504;
+    server_name _;
+    root /usr/share/nginx/html;
+    access_log /dev/stdout cv_noip;
+
+    # 영상 업로드 한도(VIDEO_MAX_BYTES 500 MB)보다 조금 크게. 큰 파일은 버퍼링하지 않고 바로 넘긴다
+    client_max_body_size 512m;
+    proxy_request_buffering off;
+    proxy_read_timeout 600s;
+    proxy_send_timeout 600s;
+
+    # 백엔드 이름은 요청 때 찾는다 — 백엔드가 늦게 떠도 nginx 가 시작 실패하지 않게 (도커 내장 DNS)
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $backend_web http://${BACKEND_WEB};
+    set $backend_api http://${BACKEND_API};
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # 웹 → 9524 (화면이 부르는 API·Swagger)
+    location /v1/ { proxy_pass $backend_web; }
+    location /docs { proxy_pass $backend_web; }
+    location = /openapi.json { proxy_pass $backend_web; }
+
+    # 공개 API(/API)·모델 게이트웨이(/model-api) → 9544. 접두사는 백엔드 PublicPrefix 가 뗀다
+    location ~ ^/(API|model-api)(/|$) { proxy_pass $backend_api; }
+
+    # 외부 서비스 시연(partner)은 이 이미지에 없다 — vite dev 서버 전용 (vite.config.ts partnerSite)
+    location ~ ^/partner(-api)?(/|$) { return 404; }
+
+    # 빌드 파일은 이름에 해시가 붙어 오래 캐시해도 된다. 화면 경로는 index.html 로 (React Router)
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}

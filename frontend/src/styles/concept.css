@@ -1,0 +1,70 @@
+/* 디자인 시안 2026-11-02 — 어두운 관제 콘솔(켜고 끄는 시안) + 혼잡도 시각화. 스타일 가이드 승인 전이라 tokens.css 와 분리해 둔다. */
+
+/* 콘솔 테마: 로그인 뒤 셸(.shell·.simple-shell)에만 건다. 로그인 화면은 밝은 그림 배경이라 제외 */
+[data-theme="console"]{color-scheme:dark;
+  --color-primary:#4da3ff;--color-primary-focus:#6bb4ff;--color-on-primary:#06121f;
+  --color-ink:#eef2f7;--color-body:#e4e9f0;--color-ink-muted-80:#b9c2cd;--color-ink-muted-48:#8a95a3;
+  --color-canvas:#141a22;--color-canvas-parchment:#0c1117;--color-surface-pearl:#1b232d;--color-surface-black:#070a0f;
+  --color-divider-soft:#2a3441;--color-hairline:#2a3441;
+  --status-free:#35c878;--status-normal:#eab308;--status-crowded:#ff5d52;--status-uncertain:#9aa3ae;--status-none:#7f8a97;
+  --border-hairline:1px solid rgba(255,255,255,.08);
+  color:var(--color-body);background:var(--color-canvas-parchment)}
+[data-theme="console"] .header,[data-theme="console"] .simple-bar{background:rgba(12,17,23,.85)}
+[data-theme="console"] .toast,[data-theme="console"] .btn-dark-utility{background:#2a3441}
+[data-theme="console"] .btn-icon{background:rgba(255,255,255,.1)}
+.theme-toggle{min-height:30px;padding:2px 12px}
+
+/* 버스 수위 게이지 */
+.bus-fill{display:block;flex:none;max-width:100%;height:auto;overflow:visible;--fill:var(--status-none)}
+.bus-fill.level-free{--fill:var(--status-free)}.bus-fill.level-normal{--fill:var(--status-normal)}.bus-fill.level-crowded{--fill:var(--status-crowded)}
+.bus-tank{fill:var(--color-canvas-parchment)}
+.bus-level{fill:var(--fill);transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.bus-body{fill:none;stroke:var(--color-ink-muted-48);stroke-width:2}
+.bus-fill.empty .bus-body{stroke-dasharray:5 4}
+.bus-glass{fill:none;stroke:var(--color-ink-muted-48);stroke-width:1.5;opacity:.7}
+.bus-wheel{fill:var(--color-ink-muted-80);stroke:var(--color-canvas);stroke-width:2.5}
+@media (prefers-reduced-motion:reduce){.bus-level,.route-bus{transition:none}}
+
+/* 결과 카드 */
+.result-hero{display:flex;align-items:center;gap:var(--space-lg);flex-wrap:wrap}
+.result-hero .bus-fill{flex:0 1 240px;min-width:140px}
+.result-hero .figures{flex:1 1 240px;min-width:0}
+.result-hero .figures .stack{display:flex;flex-direction:column}
+.result-hero .figures .stack>*+*{margin-top:0}
+
+/* 도착 노선도 */
+.route-line{background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:var(--rounded-lg);padding:var(--space-md) 52px var(--space-sm)}
+.route-track{position:relative;height:150px;border-bottom:0}
+.route-track::after{content:"";position:absolute;left:-36px;right:0;bottom:8px;height:4px;border-radius:2px;background:var(--color-hairline)}
+.route-bus{position:absolute;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap;transition:left .6s ease;z-index:1}
+.route-bus.lane-b{bottom:78px}
+.route-stop{position:absolute;right:-7px;bottom:3px;width:14px;height:14px;border-radius:50%;background:var(--color-primary);border:3px solid var(--color-canvas);z-index:1}
+.route-axis{display:flex;justify-content:space-between;margin:var(--space-xxs) -36px 0}
+.route-axis b{color:var(--color-ink)}
+.route-line+.bus-list{margin-top:var(--space-md)}   /* .bus-list 의 margin:0 이 .stack 간격을 지운다 */
+.bus-item .lead{display:flex;align-items:center;gap:var(--space-md)}
+/* 이용자 홈 (버스 조회) — 제목 → 찾기 → 버스 카드 */
+.simple-main{max-width:1040px}
+.hero{padding:var(--space-xl) 0 var(--space-lg)}
+.hero h1{font:800 44px/1.15 var(--font-display);letter-spacing:-.02em;color:var(--color-ink)}
+.hero p{margin-top:var(--space-xs);font-size:19px;color:var(--color-ink-muted-80)}
+.preview-note{display:inline-block;margin-bottom:var(--space-sm);padding:6px 14px;border-radius:var(--rounded-pill);background:var(--color-surface-pearl);border:1px dashed var(--color-ink-muted-48);font:700 13px/1.3 var(--font-text);color:var(--color-ink-muted-80)}
+.finder{display:grid;grid-template-columns:minmax(220px,1fr) minmax(280px,1.5fr) auto;gap:var(--space-lg);align-items:start;padding:var(--space-lg);background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:24px}
+.finder-title{display:block;margin-bottom:var(--space-xs);font:700 16px/1.3 var(--font-text);color:var(--color-ink)}
+.finder-field select.input{min-height:52px;font-size:18px;font-weight:700;border-radius:var(--rounded-md)}
+.finder-search{margin-top:var(--space-xs);min-height:38px;padding:6px 12px;font-size:14px;background:transparent}
+.finder-go{display:flex;flex-direction:column;align-items:center;gap:var(--space-xs);padding-top:27px}
+.finder-go .btn-primary{min-width:112px;min-height:52px;font-size:18px;font-weight:700}
+.finder-reset{background:none;border:0;padding:4px;cursor:pointer;color:var(--color-ink-muted-48);font:400 14px/1.3 var(--font-text)}
+.finder-reset:hover{color:var(--color-ink)}
+.result-title{font:700 24px/1.3 var(--font-display);color:var(--color-ink)}
+.bus-cards{list-style:none;margin:var(--space-md) 0 0;padding:0;display:grid;gap:var(--space-sm)}
+.bus-card{display:grid;grid-template-columns:150px minmax(150px,220px) 1fr;align-items:center;gap:var(--space-xl);padding:var(--space-md) var(--space-lg);background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:var(--rounded-lg)}
+.bus-card .when{font:800 28px/1.2 var(--font-display);color:var(--color-ink)}
+.bus-card .fill{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.bus-card .status{font-size:17px}
+.legend-card{margin-top:var(--space-lg);padding:var(--space-lg);background:var(--color-canvas);border:1px solid var(--color-hairline);border-radius:24px}
+.legend-card h2{font:700 20px/1.3 var(--font-display);color:var(--color-ink)}
+.legend-card p{margin-top:4px;color:var(--color-ink-muted-80);font-size:15px}
+.level-legend{list-style:none;margin:var(--space-lg) 0 0;padding:0;display:flex;justify-content:space-between;gap:var(--space-md)}
+.level-legend li{display:flex;flex-direction:column;align-items:center;gap:var(--space-xs);font:700 14px/1.3 var(--font-text);color:var(--color-ink)}

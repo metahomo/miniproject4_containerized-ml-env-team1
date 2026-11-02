@@ -1,0 +1,32 @@
+name: 단계 작업
+description: 단계 폴더(NN-slug) 하나에 대응하는 작업
+title: "[NN] "
+body:
+  - type: input
+    id: step
+    attributes:
+      label: 단계 폴더
+      placeholder: 06-compose-db
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+    validations:
+      required: true
+  - type: textarea
+    id: todo
+    attributes:
+      label: 할 일
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: 완료 조건
+      value: |
+        - [ ] VERIFY.md 항목 확인
+        - [ ] 리뷰 1인 승인 후 develop에 머지
