@@ -1,0 +1,7 @@
+# 13-yolo11-distance 전용 제외 규칙
+data/
+datasets/
+runs/
+*.pt
+__pycache__/
+*.pyc
