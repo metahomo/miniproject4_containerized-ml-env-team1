@@ -20,6 +20,7 @@ import Rbac from "./pages/admin/Rbac";
 import Server from "./pages/admin/Server";
 import Verification from "./pages/admin/Verification";
 import { designCode, isStaff, refreshPerms, useAuth, usePerms } from "./stores/auth";
+import { useConsole } from "./stores/theme";
 
 /* 옛 주소 /next-vehicle?… → 홈(버스 조회)으로, 조회 조건은 그대로 (2026-09-30 홈 = 버스 조회) */
 function ToHome() {
@@ -39,6 +40,8 @@ export default function App() {
   };
   const me = useAuth();   // T108: 로그인해야 사이트를 쓴다 — 로그인 전에는 로그인·회원가입 화면만
   const perms = usePerms();   // 메뉴·화면 게이트는 유효 권한(권한 매트릭스 S10)을 따른다 — 로그인·창 복귀 때 새로 받는다
+  const consoleOn = useConsole();
+  const theme = consoleOn ? "console" : undefined;
   const loginId = me?.login_id;
   useEffect(() => {
     if (!loginId) return;
@@ -59,7 +62,7 @@ export default function App() {
      관제·운영 권한이 없는 계정은 사이드바 없이 «버스 조회(홈)» 와 «API 키» 만 본다. */
   if (!isStaff(perms)) {
     return (
-      <div className="simple-shell">
+      <div className="simple-shell" data-theme={theme}>
         <SimpleBar />
         <main className="simple-main">
           <Routes>
@@ -73,7 +76,7 @@ export default function App() {
     );
   }
   return (
-    <div className={"shell" + (collapsed ? " collapsed" : "")}>
+    <div className={"shell" + (collapsed ? " collapsed" : "")} data-theme={theme}>
       <Sidebar collapsed={collapsed} onToggle={toggle} perms={perms} />
       <Header />
       <main className="main">
