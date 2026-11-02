@@ -6,7 +6,7 @@ import { GateBlock } from "../../components/GateBlock";
 import { ROLE_LABEL, type Role } from "../../stores/auth";
 
 interface Account { account_id: number; login_id: string; name: string; org: string | null; email: string | null; role: Role; status: "pending" | "active" | "disabled";
-  created_at: string; approved_at: string | null; approved_by: string | null; last_login_at: string | null; active_keys: number }
+  created_at: string; approved_at: string | null; approved_by: string | null; last_login_at: string | null; active_keys: number; locked_until: string | null }
 interface ApiKey { key_id: number; account_id: number; login_id: string; account_name: string; org: string | null; name: string; key_prefix: string;
   status: "pending" | "active" | "rejected"; created_at: string; approved_at: string | null; approved_by: string | null; last_used_at: string | null; revoked_at: string | null }
 const KEY_STATE = (k: ApiKey) => k.revoked_at ? <span className="muted">폐기 {fmtTime(k.revoked_at)}</span>
@@ -66,9 +66,11 @@ export default function Accounts() {
               <tr key={a.account_id}><td>{a.login_id}</td><td>{a.name}</td>
                 <td><select className="input" aria-label={`${a.login_id} 역할`} value={a.role} onChange={(e) => update(a, { role: e.target.value as Role }, `${a.login_id} 역할 → ${ROLE_LABEL[e.target.value as Role]} (세션 끊김)`)}>
                   {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></td>
-                <td>{STATUS[a.status]}{a.status === "pending" && <> <button className="btn btn-pearl" onClick={() => update(a, { status: "active" }, `${a.login_id} 사용 허용`)}>허용</button></>}</td><td className="num">{a.active_keys}</td><td>{fmtTime(a.last_login_at)}</td>
+                <td>{STATUS[a.status]}{a.status === "pending" && <> <button className="btn btn-pearl" onClick={() => update(a, { status: "active" }, `${a.login_id} 사용 허용`)}>허용</button></>}
+                  {a.locked_until && <> <b style={{ color: "var(--status-crowded)" }} title={`로그인 실패로 잠김 — ${fmtTime(a.locked_until)}에 자동 해제`}>잠김</b></>}</td><td className="num">{a.active_keys}</td><td>{fmtTime(a.last_login_at)}</td>
                 <td>{a.status === "active" ? <button className="btn btn-pearl" onClick={() => update(a, { status: "disabled" }, `${a.login_id} 정지 — 세션·키 거부`)}>정지</button>
                   : a.status === "disabled" ? <button className="btn btn-pearl" onClick={() => update(a, { status: "active" }, `${a.login_id} 다시 사용`)}>해제</button> : null}
+                  {a.locked_until && <>{" "}<button className="btn btn-pearl" onClick={() => run(() => post(`/v1/admin/accounts/${a.account_id}/unlock`, { admin: true }), `${a.login_id} 로그인 잠금 해제`)}>잠금 해제</button></>}
                   {" "}<button className="btn btn-pearl" onClick={() => showHist(a)} title="역할·상태 변경 이력 — 누가 언제 바꿨는지">이력</button></td></tr>
             ))}
           </tbody></table>
