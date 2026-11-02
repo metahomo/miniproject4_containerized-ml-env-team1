@@ -54,3 +54,6 @@ partner/.secrets
 # Claude 워크트리·전체 압축 백업(비밀값 포함)
 .claude/worktrees/
 project2610-full-*.zip
+.venv/
+__pycache__/
+*.pyc
