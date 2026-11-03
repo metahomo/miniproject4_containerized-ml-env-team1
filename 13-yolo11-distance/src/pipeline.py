@@ -9,7 +9,8 @@ class DistancePipeline:
         if model_path is None:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.abspath(os.path.join(current_dir, "../.."))
-            model_path = os.path.join(project_root, "backend", "models", "yolo11n.pt")
+            models_dir = os.environ.get("CV_MODELS_DIR", os.path.join(project_root, "backend", "models"))
+            model_path = os.path.join(models_dir, "yolo11n.pt")
 
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {model_path}")

@@ -2,24 +2,33 @@ import os
 import math
 import cv2
 import numpy as np
+import torch
 from ultralytics import YOLO
 
 class DualModelVacancyPipeline:
-    def __init__(self, distance_threshold=150.0, capacity=30):
+    def __init__(self, distance_threshold=150.0, capacity=30, device=None):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.abspath(os.path.join(current_dir, "../.."))
 
-        self.head_model_path = os.path.join(project_root, "backend", "models", "head_crowdhuman_n1280.pt")
-        self.yolo11_model_path = os.path.join(project_root, "backend", "models", "yolo11n.pt")
+        # 1. 환경 변수(CV_MODELS_DIR) 우선 참조, 미지정 시 기본 경로 폴백
+        models_dir = os.environ.get("CV_MODELS_DIR", os.path.join(project_root, "backend", "models"))
+        self.head_model_path = os.path.join(models_dir, "head_crowdhuman_n1280.pt")
+        self.yolo11_model_path = os.path.join(models_dir, "yolo11n.pt")
 
         if not os.path.exists(self.head_model_path):
             raise FileNotFoundError(f"두부 모델 미발견: {self.head_model_path}")
         if not os.path.exists(self.yolo11_model_path):
             raise FileNotFoundError(f"YOLO11 모델 미발견: {self.yolo11_model_path}")
 
-        # [이중 모델 로드]
-        self.head_model = YOLO(self.head_model_path)          # Model A: YOLOv8 기반 (Head 특화)
-        self.distance_model = YOLO(self.yolo11_model_path)    # Model B: YOLO11 기반 (Body & Distance)
+        # 2. 실행 디바이스 자동 선택 (명시적 인자가 없으면 GPU 가용 여부 자동 판별)
+        self.device = device if device else ("cuda" if torch.cuda.is_available() else "cpu")
+
+        # 3. 두 모델 로드
+        self.head_model = YOLO(self.head_model_path)
+        self.distance_model = YOLO(self.yolo11_model_path)
+
+        self.distance_threshold = distance_threshold
+        self.capacity = capacity
 
         # 클래스 ID 자동 매핑 (COCO 또는 차내 특화 커스텀 모델 자동 호환)
         self.head_class_id = 0
@@ -33,9 +42,6 @@ class DualModelVacancyPipeline:
             if v == "person":
                 self.person_class_id = k
                 break
-
-        self.distance_threshold = distance_threshold
-        self.capacity = capacity
 
     def compute_center(self, bbox):
         x1, y1, x2, y2 = bbox
@@ -76,6 +82,7 @@ class DualModelVacancyPipeline:
             conf=head_conf,
             imgsz=head_imgsz,
             iou=iou,
+            device=self.device,
             verbose=False
         )[0]
         heads = []
@@ -95,6 +102,7 @@ class DualModelVacancyPipeline:
             classes=[self.person_class_id],
             conf=person_conf,
             iou=iou,
+            device=self.device,
             verbose=False
         )[0]
         persons = []
