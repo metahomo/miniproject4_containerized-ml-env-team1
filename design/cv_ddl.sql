@@ -704,6 +704,15 @@ CREATE TABLE IF NOT EXISTS account_change (
 );
 CREATE INDEX IF NOT EXISTS ix_account_change_account ON account_change(account_id, changed_at);
 
+-- 로그인 실패 기록 (2026-11-02 사용자 결정) — 15분 안에 5번 실패하면 15분 잠금. 없는 아이디도 같이 세므로 account 를 참조하지 않는다.
+-- 성공·관리자 해제 때 지우고, 기간이 지난 행은 다음 실패 기록 때 지운다.
+CREATE TABLE IF NOT EXISTS login_attempt (
+  login_id         VARCHAR(40) NOT NULL PRIMARY KEY,
+  fail_count       INTEGER     NOT NULL CHECK (fail_count >= 1),
+  first_failed_at  VARCHAR(19) NOT NULL,
+  locked_until     VARCHAR(19)
+);
+
 -- 권한 매트릭스 (S10) — 유효 권한 = rbac.PERMISSIONS(기본값) + 이 표의 바꾼 칸. 운영 관리자 열·admin/accounts 행은 잠금(앱 422 RBAC_LOCKED).
 CREATE TABLE IF NOT EXISTS role_permission (
   permission  VARCHAR(24) NOT NULL,                      -- diagnose·measure·next_vehicle·reference_read·api_guide·own_keys·control_view·admin·accounts

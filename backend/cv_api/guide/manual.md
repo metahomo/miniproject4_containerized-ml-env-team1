@@ -86,7 +86,7 @@ curl -s -H "$K" -F camera_id=CAM-DEMO-01 -F file=@clip.mp4 -F interval_s=2 "$BAS
 - 검출기: `GET /v1/admin/detector` 로 상태, `POST /v1/admin/detector/preload` 로 재적재. YOLOv8n(프로세스 내, 입력 1280px)은 수 초, Ollama 비전 모델은 10~30초.
 - 호출 키 발급·교체는 서버 설정(`API_KEYS`, 연계처별 `이름:sha256:<hex>`)에서 한다 — `backend/README.md` "인증".
 
-## 부록. 엔드포인트 전체 목록 (69개)
+## 부록. 엔드포인트 전체 목록 (70개)
 주소 앞에 `https://p4.sumzip.com/API`(내부망은 `http://<서버>:9544`)를 붙인다. 입력·출력 형식과 시험 호출은 `/API/docs`(Swagger). 이 표는 실제 서버 명세와 자동 대조된다.
 
 ### A. 연계 시스템·일반 사용자 — 승인된 API 키 `X-API-Key` 또는 로그인 토큰 (21개)
@@ -120,7 +120,7 @@ curl -s -H "$K" -F camera_id=CAM-DEMO-01 -F file=@clip.mp4 -F interval_s=2 "$BAS
 | # | 방식 | 주소 | 하는 일 |
 |---|---|---|---|
 | 22 | POST | `/v1/auth/signup` | 회원가입 — 바로 일반 사용자 |
-| 23 | POST | `/v1/auth/login` | 로그인 → 토큰(12시간). 정지된 계정이면 403 ACCOUNT_DISABLED |
+| 23 | POST | `/v1/auth/login` | 로그인 → 토큰(12시간). 정지된 계정이면 403 ACCOUNT_DISABLED. 15분 안에 5번 실패하면 15분 잠금(429 LOGIN_LOCKED) |
 | 24 | GET | `/v1/auth/roles` | 역할·권한 표 (유스케이스 액터 기준, 키 없이) |
 | 25 | POST | `/v1/auth/logout` | 로그아웃 (토큰 폐기) |
 | 26 | GET | `/v1/auth/me` | 내 계정·역할·권한 |
@@ -128,7 +128,7 @@ curl -s -H "$K" -F camera_id=CAM-DEMO-01 -F file=@clip.mp4 -F interval_s=2 "$BAS
 | 28 | POST | `/v1/auth/keys` | API 키 신청 — 연계 시스템마다 하나, **원문은 이때 한 번만** 보인다. 운영 관리자 승인 뒤 쓸 수 있다 |
 | 29 | DELETE | `/v1/auth/keys/{key_id}` | 내 API 키 폐기 — 즉시 거부된다 |
 
-### B. 운영 관리자 전용 — 운영 관리자 로그인(또는 최초 관리자 키 `X-Admin-Key`) 필요 (40개)
+### B. 운영 관리자 전용 — 운영 관리자 로그인(또는 최초 관리자 키 `X-Admin-Key`) 필요 (41개)
 호출 키로 부르면 401, 다른 역할로 로그인했으면 403(G1). 관제 담당자는 운영 상태·차단 이벤트·운영 지표·카메라 현황·카메라 전원 표를 **읽기만** 할 수 있다.
 
 | # | 방식 | 주소 | 하는 일 |
@@ -167,11 +167,12 @@ curl -s -H "$K" -F camera_id=CAM-DEMO-01 -F file=@clip.mp4 -F interval_s=2 "$BAS
 | 61 | GET | `/v1/admin/accounts` | 계정 목록 (`status` 로 거르기) |
 | 62 | POST | `/v1/admin/accounts` | 계정 만들기 (관제 담당자·운영 관리자 등 — 바로 사용) |
 | 63 | PATCH | `/v1/admin/accounts/{account_id}` | 정지(`status=disabled`)·해제(`active`)·역할 변경 |
-| 64 | GET | `/v1/admin/accounts/{account_id}/changes` | 역할·상태 변경 이력 — 누가 언제 무엇을 바꿨는지 (최신 순) |
-| 65 | GET | `/v1/admin/api-keys` | API 키 전체 (앞자리·소유자·상태·마지막 사용). `status=pending` 이면 승인 대기 |
-| 66 | PATCH | `/v1/admin/api-keys/{key_id}` | API 키 승인(`status=active`)·반려(`rejected`) |
-| 67 | DELETE | `/v1/admin/api-keys/{key_id}` | API 키 폐기 |
-| 68 | GET | `/v1/admin/rbac` | 권한 매트릭스 — 역할×기능 유효 권한·기본값·잠긴 칸 (S10) |
-| 69 | PUT | `/v1/admin/rbac` | 권한 매트릭스 저장 — 권한마다 허용 역할. 잠긴 칸(운영 관리자 열·계정/관리 행)은 422 |
+| 64 | POST | `/v1/admin/accounts/{account_id}/unlock` | 로그인 잠금 해제 — 실패 횟수도 지운다 |
+| 65 | GET | `/v1/admin/accounts/{account_id}/changes` | 역할·상태 변경 이력 — 누가 언제 무엇을 바꿨는지 (최신 순) |
+| 66 | GET | `/v1/admin/api-keys` | API 키 전체 (앞자리·소유자·상태·마지막 사용). `status=pending` 이면 승인 대기 |
+| 67 | PATCH | `/v1/admin/api-keys/{key_id}` | API 키 승인(`status=active`)·반려(`rejected`) |
+| 68 | DELETE | `/v1/admin/api-keys/{key_id}` | API 키 폐기 |
+| 69 | GET | `/v1/admin/rbac` | 권한 매트릭스 — 역할×기능 유효 권한·기본값·잠긴 칸 (S10) |
+| 70 | PUT | `/v1/admin/rbac` | 권한 매트릭스 저장 — 권한마다 허용 역할. 잠긴 칸(운영 관리자 열·계정/관리 행)은 422 |
 
 - 비슷한 것이 두 벌인 이유: 10~14번(이용자)은 **현재 값 보기 전용**, 30·32·33·41·43번(관리자)은 **이력까지 보고 바꾸기**다.

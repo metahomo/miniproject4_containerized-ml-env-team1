@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import re
+import sqlite3
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Iterator, List, Optional
@@ -17,6 +19,8 @@ from sqlalchemy.engine import Connection, Engine
 from .settings import Settings, get_settings
 
 _engine: Optional[Engine] = None
+WAL_RETRIES = 50          # busy_timeout 과 같은 5초까지 (0.1초 간격)
+WAL_RETRY_SECONDS = 0.1
 
 # 구현 단계 추가 컬럼 — 정본 cv_ddl.sql 에도 반영됨(2026-09-29). 그 전에 만든 DB 를 위한 ADD COLUMN (테이블, 컬럼, 타입)
 MIGRATIONS = [
@@ -61,6 +65,18 @@ def get_engine(settings: Optional[Settings] = None) -> Engine:
     return _engine
 
 
+def _enable_wal(cur) -> None:  # noqa: ANN001
+    """새 DB 를 WAL 로 바꾸는 순간에 다른 연결이 겹치면 busy_timeout 을 기다리지 않고 바로 locked 가 난다 — 짧게 다시 시도한다."""
+    for attempt in range(WAL_RETRIES):
+        try:
+            cur.execute("PRAGMA journal_mode=WAL")
+            return
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e).lower() or attempt == WAL_RETRIES - 1:
+                raise
+            time.sleep(WAL_RETRY_SECONDS)
+
+
 def _make_engine(url: str) -> Engine:
     if url.startswith("sqlite"):
         eng = create_engine(url, future=True, connect_args={"check_same_thread": False})
@@ -72,7 +88,7 @@ def _make_engine(url: str) -> Engine:
             # 진단 API(9544)와 웹 백엔드(9524) 두 프로세스가 같은 파일을 쓴다 — WAL 로 읽기·쓰기 동시성, 잠금은 5초까지 대기
             cur.execute("PRAGMA busy_timeout=5000")
             if ":memory:" not in url:
-                cur.execute("PRAGMA journal_mode=WAL")
+                _enable_wal(cur)
             cur.close()
 
         return eng
