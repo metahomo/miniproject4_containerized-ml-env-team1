@@ -8,10 +8,11 @@ class VacancyDistancePipeline:
     def __init__(self, model_path=None, distance_threshold=150.0, capacity=30):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.abspath(os.path.join(current_dir, "../.."))
+        models_dir = os.environ.get("CV_MODELS_DIR", os.path.join(project_root, "backend", "models"))
 
         # 1. 두부 탐지 가중치 우선 탐색, 없으면 yolo11n.pt 로 자동 폴백
-        head_model_path = os.path.join(project_root, "backend", "models", "head_crowdhuman_n1280.pt")
-        default_yolo11 = os.path.join(project_root, "backend", "models", "yolo11n.pt")
+        head_model_path = os.path.join(models_dir, "head_crowdhuman_n1280.pt")
+        default_yolo11 = os.path.join(models_dir, "yolo11n.pt")
 
         if model_path and os.path.exists(model_path):
             self.model_file = model_path
