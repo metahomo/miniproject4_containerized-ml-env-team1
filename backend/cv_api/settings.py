@@ -117,6 +117,7 @@ class Settings(BaseSettings):
     # ---- 서버 ----
     SERVER_PUBLIC_URL: str = "http://localhost:9544"   # 외부 연계용 공개 API 포트 (D1)
     SERVE_PORTS: Tuple[int, ...] = (9544, 9524)          # cv_api.serve 가 한 프로세스로 여는 포트. 첫 포트가 모델 적재. 둘 다 같은 앱(D1)
+    METRICS_PORTS: Tuple[int, ...] = (9524,)              # /metrics 에 답하는 포트. 9524 는 도커 내부망에서만 열린다 — 9544(외부 공개)로 오면 404
     CORS_ORIGINS: Tuple[str, ...] = ("*",)   # 웹은 vite 프록시로 호출하지만, 직접 호출(다른 PC)도 허용
 
     @field_validator("RETENTION_DAYS", mode="before")

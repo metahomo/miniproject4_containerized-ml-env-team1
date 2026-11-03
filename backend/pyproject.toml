@@ -21,6 +21,7 @@ dependencies = [
   "httpx>=0.27",
   "pillow>=10",
   "pillow-heif>=0.18",   # 휴대폰 HEIC 사진 디코드 (웹 백엔드 규격 변환)
+  "prometheus-client>=0.20",   # GET /metrics (Prometheus 수집, 내부 포트 9524 만)
 ]
 
 [project.optional-dependencies]
