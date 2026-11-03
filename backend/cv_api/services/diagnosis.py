@@ -209,6 +209,16 @@ def diagnose(
     row["response_ms"] = int((time.perf_counter() - t_start) * 1000)
     row["notice"] = s.NOTICE_TEXT
     row["captured_at"] = captured_at
+
+    # v1.3 이중 모델 결과 반영 (YOLOv8 Head + YOLO11 신체/거리 분석)
+    dual_res = getattr(det, "last_dual_result", None)
+    if dual_res and "fusion_summary" in dual_res:
+        fsum = dual_res["fusion_summary"]
+        row["crowded_ratio"] = fsum.get("crowded_ratio")
+        row["close_pairs_count"] = fsum.get("close_pairs_count")
+        row["avg_distance_px"] = fsum.get("avg_distance_px")
+        row["vacancy_status_kr"] = fsum.get("vacancy_status_kr")
+
     return row
 
 
@@ -230,4 +240,8 @@ def to_assessment_schema(row: Dict[str, Any]) -> Dict[str, Any]:
         "remaining_persons": row.get("remaining_persons"), "remaining_not_computable": bool(row["remaining_not_computable"]),
         "mean_confidence": row["mean_confidence"], "warnings": row.get("warning_list", []), "notice": row["notice"],
         "processed_at": row["processed_at"], "response_ms": row.get("response_ms"), "versions": row["versions"],
+        "crowded_ratio": row.get("crowded_ratio"),
+        "close_pairs_count": row.get("close_pairs_count"),
+        "avg_distance_px": row.get("avg_distance_px"),
+        "vacancy_status_kr": row.get("vacancy_status_kr"),
     }

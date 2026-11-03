@@ -102,6 +102,46 @@ class Assessment(BaseModel):
     processed_at: str
     response_ms: Optional[int] = None
     versions: Versions
+    # v1.3 이중 모델(YOLOv8 Head + YOLO11) 융합 분석 지표 (선택적)
+    crowded_ratio: Optional[float] = None
+    close_pairs_count: Optional[int] = None
+    avg_distance_px: Optional[float] = None
+    vacancy_status_kr: Optional[str] = None
+
+
+# ---------------------------------------------------------------- v1.3 이중 모델 융합 진단
+class PairDistance(BaseModel):
+    pair: List[int]
+    pixel_distance: float
+    is_close: bool
+
+
+class DetectedObject(BaseModel):
+    id: int
+    confidence: float
+    bbox: List[float]
+    center: List[float]
+
+
+class FusionSummary(BaseModel):
+    head_count: int
+    person_body_count: int
+    capacity: int
+    occupancy_ratio: float
+    avg_distance_px: float
+    close_pairs_count: int
+    crowded_ratio: float
+    vacancy_status: str
+    vacancy_status_kr: str
+    infer_ms: int
+
+
+class DualAssessment(BaseModel):
+    fusion_summary: FusionSummary
+    heads: List[DetectedObject]
+    persons: List[DetectedObject]
+    distance_pairs: List[PairDistance]
+    annotated_image_base64: Optional[str] = None
 
 
 class BatchItem(BaseModel):

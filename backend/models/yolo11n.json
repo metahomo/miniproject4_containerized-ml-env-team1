@@ -1,0 +1,10 @@
+{
+  "repo_url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
+  "commit_hash": "weights-sha256:0ebbc80d4a7680d1",
+  "weights_file": "yolo11n.pt",
+  "license": "AGPL-3.0",
+  "required_versions": "ultralytics>=8.3.0, torch>=2.1",
+  "contract_check_result": "adapter",
+  "detector_kind": "dual",
+  "fetched_at": "2026-11-03T16:00:00"
+}

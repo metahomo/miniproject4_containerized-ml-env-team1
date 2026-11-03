@@ -58,7 +58,7 @@ def _weights_record(s: Settings) -> Dict[str, Any]:
 
 
 def _model_package_record(s: Settings, det: Detector) -> Dict[str, Any]:
-    rec = _weights_record(s) if det.kind == "yolov8" else {}
+    rec = _weights_record(s) if det.kind in ("yolov8", "dual") else {}
     if det.kind == "ollama_vl":
         return {
             "repo_url": s.OLLAMA_URL, "commit_hash": f"ollama:{det.model_name}", "weights_file": det.model_name,
@@ -72,7 +72,7 @@ def _model_package_record(s: Settings, det: Detector) -> Dict[str, Any]:
         "repo_url": rec.get("repo_url", s.MODEL_REPO), "commit_hash": rec.get("commit_hash", "unknown"),
         "weights_file": rec.get("weights_file", s.MODEL_WEIGHTS.name), "license": rec.get("license"),
         "required_versions": rec.get("required_versions"), "contract_check_result": "adapter",
-        "fetched_at": rec.get("fetched_at", db.now_iso()), "fetched_by": "op", "detector_kind": "yolov8",
+        "fetched_at": rec.get("fetched_at", db.now_iso()), "fetched_by": "op", "detector_kind": det.kind,
     }
 
 

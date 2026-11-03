@@ -13,6 +13,7 @@ Detector 인터페이스: detect(img_bgr) -> list[Box(x1,y1,x2,y2,conf)]  (한 �
 from __future__ import annotations
 
 import json
+import math
 import re
 import time
 from dataclasses import dataclass, field
@@ -186,6 +187,209 @@ def _parse_vl_boxes(text: str, w: int, h: int) -> List[Box]:
     return out
 
 
+# ------------------------------------------------------------------ Dual Model (v1.3: YOLOv8 Head + YOLO11)
+class DualModelDetector:
+    """v1.3: YOLOv8 두부 탐지 모델(Model A) + YOLO11 신체/거리 분석 모델(Model B) 융합 엔진."""
+    kind = "dual"
+
+    def __init__(self, s: Settings):
+        self.s = s
+        self.model_name = f"{s.MODEL_WEIGHTS.name}+{s.MODEL_DISTANCE_WEIGHTS.name}"
+        self.target = "head"
+        self._head_model = None
+        self._distance_model = None
+        self.head_class_id = 0
+        self.person_class_id = 0
+        self.last_dual_result: Optional[Dict[str, Any]] = None
+
+    def is_loaded(self) -> bool:
+        return self._head_model is not None and self._distance_model is not None
+
+    def load(self) -> float:
+        t0 = time.perf_counter()
+        from ultralytics import YOLO
+
+        if not self.s.MODEL_WEIGHTS.exists():
+            raise DetectorNotReady(f"두부 가중치 파일이 없다: {self.s.MODEL_WEIGHTS}")
+        if not self.s.MODEL_DISTANCE_WEIGHTS.exists():
+            raise DetectorNotReady(f"거리 분석 가중치 파일이 없다: {self.s.MODEL_DISTANCE_WEIGHTS}")
+
+        self._head_model = YOLO(str(self.s.MODEL_WEIGHTS))
+        self._distance_model = YOLO(str(self.s.MODEL_DISTANCE_WEIGHTS))
+
+        # 두부 모델 클래스 식별 (head 또는 0번)
+        for k, v in getattr(self._head_model, "names", {}).items():
+            if str(v).lower() == "head":
+                self.head_class_id = int(k)
+                break
+
+        # 신체 거리 모델 클래스 식별 (person 또는 0번)
+        for k, v in getattr(self._distance_model, "names", {}).items():
+            if str(v).lower() == "person":
+                self.person_class_id = int(k)
+                break
+
+        return time.perf_counter() - t0
+
+    def compute_center(self, bbox: Sequence[float]) -> Tuple[float, float]:
+        x1, y1, x2, y2 = bbox[:4]
+        return round((x1 + x2) / 2.0, 2), round((y1 + y2) / 2.0, 2)
+
+    def calculate_pairwise_distances(self, persons: List[Dict[str, Any]], threshold: float) -> Tuple[List[Dict[str, Any]], float, int, float]:
+        n = len(persons)
+        pairs: List[Dict[str, Any]] = []
+        close_count = 0
+        total_dist = 0.0
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                c1 = persons[i]["center"]
+                c2 = persons[j]["center"]
+                dist = round(math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2), 2)
+                is_close = dist < threshold
+                if is_close:
+                    close_count += 1
+                total_dist += dist
+                pairs.append({
+                    "pair": [persons[i]["id"], persons[j]["id"]],
+                    "pixel_distance": dist,
+                    "is_close": is_close,
+                })
+
+        total_pairs = len(pairs)
+        avg_dist = round(total_dist / total_pairs, 2) if total_pairs > 0 else 0.0
+        crowded_ratio = round(close_count / total_pairs, 4) if total_pairs > 0 else 0.0
+        return pairs, avg_dist, close_count, crowded_ratio
+
+    def infer_dual(self, img_bgr: np.ndarray, timeout_s: float = 10.0, capacity: Optional[int] = None) -> Dict[str, Any]:
+        if not self.is_loaded():
+            raise DetectorNotReady("이중 모델 미적재")
+        t0 = time.perf_counter()
+
+        # 1. Model A: 두부 탐지 (고해상도 1280)
+        head_res = self._head_model.predict(
+            img_bgr,
+            classes=[self.head_class_id],
+            conf=self.s.HEAD_CONF_MIN,
+            imgsz=self.s.MODEL_IMGSZ,
+            iou=0.45,
+            device=self.s.MODEL_DEVICE,
+            verbose=False,
+        )[0]
+
+        heads: List[Dict[str, Any]] = []
+        head_boxes: List[Box] = []
+        for idx, box in enumerate(head_res.boxes or []):
+            xyxy = box.xyxy[0].cpu().numpy().tolist()
+            conf = float(box.conf[0].item())
+            heads.append({
+                "id": idx,
+                "confidence": round(conf, 4),
+                "bbox": [round(c, 2) for c in xyxy],
+                "center": self.compute_center(xyxy),
+            })
+            head_boxes.append((float(xyxy[0]), float(xyxy[1]), float(xyxy[2]), float(xyxy[3]), conf))
+
+        # 2. Model B: YOLO11 전신 검출 -> 거리 행렬
+        yolo_res = self._distance_model.predict(
+            img_bgr,
+            classes=[self.person_class_id],
+            conf=self.s.DISTANCE_PERSON_CONF_MIN,
+            iou=0.45,
+            device=self.s.MODEL_DEVICE,
+            verbose=False,
+        )[0]
+
+        persons: List[Dict[str, Any]] = []
+        for idx, box in enumerate(yolo_res.boxes or []):
+            xyxy = box.xyxy[0].cpu().numpy().tolist()
+            conf = float(box.conf[0].item())
+            persons.append({
+                "id": idx,
+                "confidence": round(conf, 4),
+                "bbox": [round(c, 2) for c in xyxy],
+                "center": self.compute_center(xyxy),
+            })
+
+        if time.perf_counter() - t0 > timeout_s:
+            raise DetectorNotReady(f"추론 시간 초과 (> {timeout_s}s)")
+
+        pairs, avg_dist, close_count, crowded_ratio = self.calculate_pairwise_distances(
+            persons, self.s.DISTANCE_THRESHOLD
+        )
+
+        cap = capacity or 30
+        head_count = len(heads)
+        occupancy_ratio = round((head_count / cap) * 100, 2) if cap > 0 else 0.0
+        if head_count <= 2 or (occupancy_ratio < 30 and crowded_ratio < 0.2):
+            vacancy_status = "EMPTY"
+            status_kr = "여유"
+        elif occupancy_ratio >= 70 or crowded_ratio >= 0.5:
+            vacancy_status = "CROWDED"
+            status_kr = "혼잡"
+        else:
+            vacancy_status = "MODERATE"
+            status_kr = "보통"
+
+        payload = {
+            "fusion_summary": {
+                "head_count": head_count,
+                "person_body_count": len(persons),
+                "capacity": cap,
+                "occupancy_ratio": occupancy_ratio,
+                "avg_distance_px": avg_dist,
+                "close_pairs_count": close_count,
+                "crowded_ratio": crowded_ratio,
+                "vacancy_status": vacancy_status,
+                "vacancy_status_kr": status_kr,
+                "infer_ms": int((time.perf_counter() - t0) * 1000),
+            },
+            "heads": heads,
+            "persons": persons,
+            "distance_pairs": pairs,
+            "head_boxes": head_boxes,
+        }
+        self.last_dual_result = payload
+        return payload
+
+    def detect(self, img_bgr: np.ndarray, timeout_s: float) -> List[Box]:
+        dual = self.infer_dual(img_bgr, timeout_s=timeout_s)
+        return dual.get("head_boxes", [])
+
+    def annotate_image(self, orig_img: np.ndarray, payload: Optional[Dict[str, Any]] = None) -> np.ndarray:
+        payload = payload or self.last_dual_result
+        if not payload:
+            return orig_img
+        img = orig_img.copy()
+        summary = payload.get("fusion_summary", {})
+
+        # 1) YOLO11 전신 박스 (녹색 실선)
+        for p in payload.get("persons", []):
+            x1, y1, x2, y2 = map(int, p["bbox"])
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 1)
+
+        # 2) YOLO11 중심점 간 근접 거리선 (빨간색 실선)
+        person_map = {p["id"]: p for p in payload.get("persons", [])}
+        for pair in payload.get("distance_pairs", []):
+            if pair.get("is_close"):
+                p1_id, p2_id = pair["pair"]
+                if p1_id in person_map and p2_id in person_map:
+                    c1 = tuple(map(int, person_map[p1_id]["center"]))
+                    c2 = tuple(map(int, person_map[p2_id]["center"]))
+                    cv2.line(img, c1, c2, (0, 0, 255), 2)
+
+        # 3) Model A 두부 중심점 (파란색 원)
+        for h in payload.get("heads", []):
+            cx, cy = map(int, h["center"])
+            cv2.circle(img, (cx, cy), 4, (255, 0, 0), -1)
+
+        # 4) 상단 이중 모델 종합 대시보드 오버레이
+        overlay = f"Heads: {summary.get('head_count', 0)} | Persons: {summary.get('person_body_count', 0)} | Status: {summary.get('vacancy_status_kr', '')} ({summary.get('vacancy_status', '')})"
+        cv2.rectangle(img, (0, 0), (img.shape[1], 42), (20, 20, 20), -1)
+        cv2.putText(img, overlay, (15, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
+        return img
+
+
 # ------------------------------------------------------------------ Stub (테스트)
 class StubDetector:
     kind = "stub"
@@ -211,6 +415,8 @@ class StubDetector:
 
 def build_detector(s: Settings | None = None) -> Detector:
     s = s or get_settings()
+    if s.DETECTOR in ("dual", "yolo_dual"):
+        return DualModelDetector(s)
     if s.DETECTOR == "yolov8":
         return YoloV8Detector(s)
     if s.DETECTOR == "ollama_vl":
