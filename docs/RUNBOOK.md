@@ -39,17 +39,26 @@ backend ---> ./models folder (.pt, .json, read-only)
     Copy-Item docker.env.example docker.env
     ```
 
-2. 아래 명령을 두 번 실행해 키를 2개 만듭니다. 앞의 값은 원문, 뒤의 값은 해시입니다. 원문은 다시 볼 수 없으므로 안전한 곳에 보관합니다.
+2. 아래 명령을 두 번 실행해 키를 2개 만듭니다. 첫 번째 결과가 **호출 키**, 두 번째 결과가 **관리자 키**입니다. 각 줄의 앞 값이 원문, 뒤 값(`sha256:...`)이 해시입니다.
 
     ```powershell
     docker run --rm python:3.11-slim python -c "import secrets,hashlib;k=secrets.token_urlsafe(24);print(k, 'sha256:'+hashlib.sha256(k.encode()).hexdigest())"
     ```
 
-3. `docker.env`의 두 줄에 해시를 넣습니다.
+    | 값 | 쓰는 곳 |
+    |---|---|
+    | 호출 키 해시 | 2장 3번 `docker.env`의 `API_KEYS` |
+    | 관리자 키 해시 | 2장 3번 `docker.env`의 `ADMIN_KEYS` |
+    | 호출 키 원문 | 3장 샘플 동작 |
+    | 관리자 키 원문 | 2장 최초 1회 작업의 관리자 로그인, 3장 샘플 동작 |
+
+    해시는 `docker.env`에만 넣고, 원문은 로그인과 스크립트에 씁니다. 원문은 다시 볼 수 없으므로 안전한 곳에 보관합니다.
+
+3. `docker.env`의 두 줄에 해시를 넣습니다. 해시는 `sha256:`까지 포함한 값 전체입니다.
 
     ```text
-    API_KEYS=web:sha256:<첫 번째 해시>
-    ADMIN_KEYS=op1:sha256:<두 번째 해시>
+    API_KEYS=web:<호출 키 해시>
+    ADMIN_KEYS=op1:<관리자 키 해시>
     ```
 
 ### 기동과 준비 확인
@@ -92,7 +101,7 @@ curl.exe -s http://localhost:9544/v1/readiness
 
 ### 샘플 동작 (시연·교차실행 환경 전용)
 
-샘플 데이터를 넣고 시연 모드를 켜므로 실제 운영 DB에서는 실행하지 않습니다. 기준 정보를 넣은 뒤 실행하며, 마지막 줄에 `PASS`가 나오면 정상입니다.
+샘플 데이터를 넣고 시연 모드를 켜므로 실제 운영 DB에서는 실행하지 않습니다. 기준 정보를 넣은 뒤 실행하며, 마지막 줄에 `PASS`가 나오면 정상입니다. `<...>`에는 2장에서 보관한 **원문**을 넣습니다. 해시를 넣으면 인증에 실패합니다.
 
 ```powershell
 docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출 키 원문> backend python /app/scripts/demo_prepare.py
@@ -164,8 +173,8 @@ docker compose start backend
 
 | 키 이름 | 용도 | 보관 위치 |
 |---|---|---|
-| `API_KEYS` | API 호출 키 | 해시: `docker.env`. 원문: (입력 필요) |
-| `ADMIN_KEYS` | 최초 관리자 로그인. 평소에는 개인 계정 사용 | 해시: `docker.env`. 원문: (입력 필요) |
+| `API_KEYS` | API 호출 키 | 호출 키 해시: `docker.env`. 호출 키 원문: (입력 필요) |
+| `ADMIN_KEYS` | 최초 관리자 로그인. 평소에는 개인 계정 사용 | 관리자 키 해시: `docker.env`. 관리자 키 원문: (입력 필요) |
 | `BIS_API_KEY` | 대전 BIS 공공 API. `EXTERNAL_PROVIDER=bis`일 때만 사용 | `docker.env` |
 
 ## 9. 교차실행 결과
