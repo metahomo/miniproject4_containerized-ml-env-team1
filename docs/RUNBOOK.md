@@ -121,7 +121,12 @@ docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출
 
 | 증상 | 확인 방법 | 원인 | 조치 | 복구 확인 |
 |---|---|---|---|---|
-| | | | | |
+| 백엔드 `(unhealthy)`, 진단 불가 | `readiness`가 `unavailable`, `model_commit`이 `weights-sha256:missing`. 로그에 `detector load failed` | `models/` 폴더가 비었거나 파일이 없음 | `models/`의 `.pt`, `.json`을 확인한 뒤 `docker compose up -d --force-recreate backend` | 3장 확인 |
+| 로그인할 때 `로그인 실패가 많아 잠겼다` (HTTP 429) | **계정 · 키 관리**에 `잠김` 표시. `docker compose exec backend cat /data/logs/security.log`에 `login_locked` | 15분 안에 로그인 5번 실패 | 15분 뒤 자동 해제. 급하면 운영 관리자가 **잠금 해제** 버튼을 누름. 운영 관리자가 잠겼으면 관리자 키로 로그인해 해제 | 해당 계정 로그인 성공 |
+| 백엔드 `Restarting` 반복 | 로그에 `시작 거부` | `docker.env`의 `API_KEYS`, `ADMIN_KEYS`가 비었거나 기본값 | 2장대로 키를 넣고 `docker compose up -d` | 3장 확인 |
+| 시작 직후 로그에 `no such table` | `curl.exe -s http://localhost:9544/v1/readiness` | 새 볼륨에서 DB 준비 전에 들어온 상태 조회 | `ready`가 되면 조치 없음. 1분이 지나도 `ready`가 아니면 로그의 `startup failed` 줄을 담당자에게 전달 | `"readiness":"ready"` |
+
+`security.log`의 시간은 UTC입니다. 한국 시간은 9시간을 더합니다. 없는 아이디는 `(없는 아이디)`로 기록되며, 해제할 계정이 없으므로 15분 뒤 자동으로 풀립니다.
 
 ## 6. 백업과 복구
 
