@@ -1,20 +1,20 @@
 # ==============================================================================
-# [CPU 전용 시연 환경 빌드] - 버전 1.2
+# [CPU 전용 시연 환경 빌드] - 버전 1.3
 # * GPU 전환 시 베이스 이미지를 아래로 변경:
 #   FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 # ==============================================================================
 FROM python:3.11-slim
 
 LABEL maintainer="sumtong-team1" \
-      version="1.2" \
-      description="YOLO11 Bus Crowd & Distance Analysis Pipeline v1.2"
+      version="1.3" \
+      description="YOLO11 Bus Crowd & Distance Analysis Pipeline v1.3"
 
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     YOLO_CONFIG_DIR=/tmp/Ultralytics \
     PYTHONPATH=/app \
-    APP_VERSION="1.2"
+    APP_VERSION="1.3"
 
 # OpenCV 및 시스템 필수 라이브러리 설치
 RUN apt-get update && apt-get install -y --no-install-recommends \
