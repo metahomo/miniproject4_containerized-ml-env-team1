@@ -318,24 +318,29 @@ class DualModelDetector:
             persons, self.s.DISTANCE_THRESHOLD
         )
 
-        cap = capacity or 30
+        cap = capacity if (capacity is not None and capacity > 0) else None
         head_count = len(heads)
-        occupancy_ratio = round((head_count / cap) * 100, 2) if cap > 0 else 0.0
-        if head_count <= 2 or (occupancy_ratio < 30 and crowded_ratio < 0.2):
-            vacancy_status = "EMPTY"
-            status_kr = "여유"
-        elif occupancy_ratio >= 70 or crowded_ratio >= 0.5:
-            vacancy_status = "CROWDED"
-            status_kr = "혼잡"
+        if cap and cap > 0:
+            occupancy_ratio = round((head_count / cap) * 100, 2)
+            if head_count <= 2 or (occupancy_ratio < 30 and crowded_ratio < 0.2):
+                vacancy_status = "EMPTY"
+                status_kr = "여유"
+            elif occupancy_ratio >= 70 or crowded_ratio >= 0.5:
+                vacancy_status = "CROWDED"
+                status_kr = "혼잡"
+            else:
+                vacancy_status = "MODERATE"
+                status_kr = "보통"
         else:
-            vacancy_status = "MODERATE"
-            status_kr = "보통"
+            occupancy_ratio = 0.0
+            vacancy_status = "UNCERTAIN"
+            status_kr = "판독불가"
 
         payload = {
             "fusion_summary": {
                 "head_count": head_count,
                 "person_body_count": len(persons),
-                "capacity": cap,
+                "capacity": cap or 0,
                 "occupancy_ratio": occupancy_ratio,
                 "avg_distance_px": avg_dist,
                 "close_pairs_count": close_count,
@@ -352,8 +357,8 @@ class DualModelDetector:
         self.last_dual_result = payload
         return payload
 
-    def detect(self, img_bgr: np.ndarray, timeout_s: float) -> List[Box]:
-        dual = self.infer_dual(img_bgr, timeout_s=timeout_s)
+    def detect(self, img_bgr: np.ndarray, timeout_s: float, capacity: Optional[int] = None) -> List[Box]:
+        dual = self.infer_dual(img_bgr, timeout_s=timeout_s, capacity=capacity)
         return dual.get("head_boxes", [])
 
     def annotate_image(self, orig_img: np.ndarray, payload: Optional[Dict[str, Any]] = None) -> np.ndarray:
