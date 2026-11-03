@@ -1,11 +1,11 @@
-# 숨통 운영 안내 (Runbook) — v1.0
+# 숨통 운영 안내 (Runbook) — v1.1
 
 | 항목 | 값 |
 |---|---|
-| 운영 버전 | `CV_TAG=v1.0` |
+| 운영 버전 | `CV_TAG=v1.1` |
 | 담당자 | (입력 필요) |
 | 장애 연락처 | (입력 필요) |
-| 기준일 | 2026-11-02 |
+| 기준일 | 2026-11-03 |
 
 ## 1. 구성
 
@@ -19,11 +19,13 @@ backend ---> ./models folder (.pt, .json, read-only)
 
 | 항목 | 값 |
 |---|---|
-| 백엔드 이미지 | `hyungnss/sumtong:backend-v1.0` (`sha256:dcc13cf29c713be8de050ef3b7bccc12a745dbce26a893f15f036816b5a2b97a`) |
-| 프론트엔드 이미지 | `hyungnss/sumtong:frontend-v1.0` (`sha256:afa0cae581940351fe8280f8fc6d13f24ec8451eb790f8735ee12f729cbc6c2f`) |
+| 백엔드 이미지 | `hyungnss/sumtong:backend-v1.1` (`sha256:73b14e3c6a242592ac3010c0942949435e645e466a8b8a6805a54a99189b7206`) |
+| 프론트엔드 이미지 | `hyungnss/sumtong:frontend-v1.1` (`sha256:97ae28a1342e0ccfdd004317dcf62bd59bddf3c3ae397da335177b3e672d16bc`) |
+| 소스 | Git 태그 `v1.1` (`a576aca`) |
 | 모델 | `head_crowdhuman_n1280.pt`, `.json`. 이미지 미포함, 받는 곳: (입력 필요) |
 | 포트 | 웹 9504, API 9544 |
 | 데이터 | `sumtong_cv-data` 볼륨, `/data/cv.db` |
+| 보안 로그 | 같은 볼륨의 `/data/logs/security.log`. 계정 잠금과 잠금 해제 기록, 시간은 UTC |
 | 설정 파일 | `docker.env`: 백엔드 설정과 키 해시. `.env`: `CV_TAG`, 포트, 모델 경로 |
 
 ## 2. 기동
@@ -35,7 +37,7 @@ backend ---> ./models folder (.pt, .json, read-only)
 1. 버전을 지정하고 설정 파일을 만듭니다.
 
     ```powershell
-    Set-Content .env "CV_TAG=v1.0" -Encoding ascii
+    Set-Content .env "CV_TAG=v1.1" -Encoding ascii
     Copy-Item docker.env.example docker.env
     ```
 
@@ -69,8 +71,8 @@ curl.exe -s http://localhost:9544/v1/readiness
 ```
 
 - 준비 완료 기준: `"readiness":"ready"`. `preparing`이면 잠시 후 다시 확인합니다.
-- `(healthy)`만으로 판단하지 않습니다. 모델이 없어 `unavailable`이어도 `(healthy)`로 표시됩니다.
-- 통상 소요 시간: 이미지를 받아 둔 상태에서 약 10초(2026-11-02 실측). 처음에는 이미지(약 650MB)를 받느라 몇 분 더 걸립니다.
+- 컨테이너 상태: `readiness`가 `ready`일 때만 `(healthy)`로 표시됩니다. 모델이 없어 `unavailable`이면 약 3분 뒤 `(unhealthy)`로 바뀝니다.
+- 통상 소요 시간: 이미지를 받아 둔 상태에서 6~13초(2026-11-03, 35회 실측). 처음에는 이미지(약 650MB)를 받느라 몇 분 더 걸립니다.
 
 ### 최초 1회 작업
 
@@ -93,7 +95,7 @@ curl.exe -s http://localhost:9544/v1/readiness
 
 | 확인 항목 | 명령 또는 위치 | 정상 결과 |
 |---|---|---|
-| 이미지 버전 | `docker compose images` | `backend-v1.0`, `frontend-v1.0` |
+| 이미지 버전 | `docker compose images` | `backend-v1.1`, `frontend-v1.1` |
 | 준비 상태, 모델 | `curl.exe -s http://localhost:9544/v1/readiness` | `"readiness":"ready"`, `"model_commit":"weights-sha256:d740367868d50137"` |
 | 로그 | `docker compose logs backend` | `detector ready: yolov8 head_crowdhuman_n1280.pt` |
 | 웹 화면 | `http://localhost:9504` | 화면 표시 |
