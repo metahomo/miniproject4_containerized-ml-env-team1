@@ -1,0 +1,15 @@
+# 숨통 Prometheus 설정 — docker-compose.monitoring.yml 의 prometheus 서비스가 읽는다.
+# backend:9524 = 같은 compose 내부망의 백엔드 웹 포트. /metrics 는 이 포트에서만 답한다 (9544 는 404).
+global:
+  scrape_interval: 15s       # 15초마다 지표를 가져온다
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: sumtong-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:9524"]
+
+  - job_name: prometheus     # Prometheus 자기 자신 (수집이 도는지 확인용)
+    static_configs:
+      - targets: ["localhost:9090"]

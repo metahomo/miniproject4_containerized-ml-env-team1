@@ -1,0 +1,10 @@
+# /etc/grafana/dashboards 폴더의 JSON 을 대시보드로 자동 등록한다
+apiVersion: 1
+providers:
+  - name: sumtong
+    folder: 숨통
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false    # 화면에서 고쳐도 저장되지 않는다 — 바꾸려면 JSON 을 고쳐 커밋
+    options:
+      path: /etc/grafana/dashboards

@@ -29,6 +29,8 @@ from .gates import GateBlocked, gate_exception_handler
 from .services import ops
 from .settings import get_settings
 
+from . import __version__, metrics
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("cv_api")
 access_log = logging.getLogger("cv_api.access")
@@ -149,12 +151,14 @@ def create_app(role: Role = "all") -> FastAPI:
             return resp
         finally:
             out = getattr(request.state, "log_result", None) or {}
+            metrics.observe(request, status, time.perf_counter() - t0, out.get("label"))
             access_log.info("req_id=%s path=%s status=%s dur_ms=%.1f input_len=%s label=%s score=%s model_version=%s",
                             req_id, request.url.path, status, (time.perf_counter() - t0) * 1000,
                             request.headers.get("content-length", "-"), out.get("label", "-"), out.get("score", "-"),
                             out.get("model_version", "-"))
     for r in routers_for(role):
         app.include_router(r)
+        app.add_api_route("/metrics", metrics.metrics_endpoint, methods=["GET"], include_in_schema=False)
 
     @app.get("/", include_in_schema=False)
     def _root(request: Request) -> RedirectResponse:   # https://p4.sumzip.com/API → Swagger (T098)
