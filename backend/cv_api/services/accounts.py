@@ -15,11 +15,13 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from .. import db
+from .. import db, security_log
 from ..gates import GateBlocked
 from ..rbac import ACCOUNT_ROLES
+from ..settings import get_settings
 
 SESSION_HOURS = 12
 KEY_PREFIX = "cvk_"
@@ -47,7 +49,7 @@ def sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _plus_hours(h: int) -> str:
+def _plus_hours(h: float) -> str:
     return (datetime.now(timezone.utc) + timedelta(hours=h)).strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -97,8 +99,9 @@ def signup(body: Dict[str, Any]) -> Dict[str, Any]:
 
 def list_accounts(status: Optional[str] = None) -> List[Dict[str, Any]]:
     with db.connect() as conn:
-        rows = db.q(conn, "SELECT a.*, (SELECT COUNT(*) FROM api_key k WHERE k.account_id=a.account_id AND k.revoked_at IS NULL AND k.status='active') AS active_keys "
-                          "FROM account a" + (" WHERE a.status=:s" if status else "") + " ORDER BY a.created_at DESC", **({"s": status} if status else {}))
+        rows = db.q(conn, "SELECT a.*, (SELECT COUNT(*) FROM api_key k WHERE k.account_id=a.account_id AND k.revoked_at IS NULL AND k.status='active') AS active_keys, "
+                          "(SELECT l.locked_until FROM login_attempt l WHERE l.login_id=a.login_id AND l.locked_until > :now) AS locked_until "
+                          "FROM account a" + (" WHERE a.status=:s" if status else "") + " ORDER BY a.created_at DESC", now=db.now_iso(), **({"s": status} if status else {}))
     return [public(r) for r in rows]
 
 
@@ -146,16 +149,61 @@ def update_account(account_id: int, changes: Dict[str, Any], by: str) -> Dict[st
         return public(_get(conn, account_id))
 
 
+# ---------------------------------------------------------------- 로그인 시도 제한
+def _login_locked() -> GateBlocked:
+    return GateBlocked("G1", "LOGIN_LOCKED", f"로그인 실패가 많아 잠겼다 — {get_settings().LOGIN_LOCK_MINUTES}분 안에 자동으로 풀린다. 급하면 운영 관리자에게 문의",
+                       "self", 429, record=False)
+
+
+def _record_login_failure(login_id: str, known: bool) -> bool:
+    """실패 1건을 기록하고 이번 실패로 잠겼는지 돌려준다. db.connect 는 예외가 나면 되돌리므로 로그인 거부를 던지기 전에 따로 커밋한다."""
+    s = get_settings()
+    minutes = s.LOGIN_LOCK_MINUTES
+    now = db.now_iso()
+    with db.connect() as conn:
+        conn.execute(text("DELETE FROM login_attempt WHERE locked_until <= :now OR (locked_until IS NULL AND first_failed_at <= :since)"),
+                     {"now": now, "since": _plus_hours(-minutes / 60)})
+        conn.execute(text("INSERT INTO login_attempt (login_id, fail_count, first_failed_at, locked_until) VALUES (:l, 1, :now, NULL) "
+                          "ON CONFLICT (login_id) DO UPDATE SET fail_count = login_attempt.fail_count + 1"), {"l": login_id, "now": now})
+        r = db.q1(conn, "SELECT fail_count, locked_until FROM login_attempt WHERE login_id=:l", l=login_id)
+        if r["fail_count"] < s.LOGIN_MAX_FAILS:
+            return False
+        if not r["locked_until"]:
+            db.update(conn, "login_attempt", "login_id=:l", {"locked_until": _plus_hours(minutes / 60)}, l=login_id)
+    # 없는 아이디는 비밀번호를 잘못 넣은 값일 수 있어 파일에 적지 않는다
+    security_log.event(f"login_locked login_id={login_id if known else '(없는 아이디)'} fails={r['fail_count']}")
+    return True
+
+
+def unlock_account(account_id: int, by: str) -> Dict[str, Any]:
+    """운영 관리자: 로그인 잠금을 바로 풀고 실패 횟수를 지운다. 잠겨 있지 않으면 바뀌는 것이 없다."""
+    with db.connect() as conn:
+        a = _get(conn, account_id)
+        locked = db.q1(conn, "SELECT locked_until FROM login_attempt WHERE login_id=:l AND locked_until > :now", l=a["login_id"], now=db.now_iso())
+        conn.execute(text("DELETE FROM login_attempt WHERE login_id=:l"), {"l": a["login_id"]})
+    if locked:
+        security_log.event(f"login_unlocked login_id={a['login_id']} by={by}")
+    return public({**a, "locked_until": None})
+
+
 # ---------------------------------------------------------------- 로그인·세션
 def login(login_id: str, password: str) -> Dict[str, Any]:
+    lid = (login_id or "").strip().lower()
     with db.connect() as conn:
-        a = db.q1(conn, "SELECT * FROM account WHERE login_id=:l", l=(login_id or "").strip().lower())
-        if not a or not check_password(password or "", a["password_hash"]):
-            raise GateBlocked("G1", "LOGIN_FAILED", "아이디 또는 비밀번호가 맞지 않는다", "self", 401, record=False)
+        lock = db.q1(conn, "SELECT locked_until FROM login_attempt WHERE login_id=:l AND locked_until > :now", l=lid, now=db.now_iso())
+        if lock:
+            raise _login_locked()
+        a = db.q1(conn, "SELECT * FROM account WHERE login_id=:l", l=lid)
+    if not a or not check_password(password or "", a["password_hash"]):
+        if _record_login_failure(lid, known=a is not None):
+            raise _login_locked()
+        raise GateBlocked("G1", "LOGIN_FAILED", "아이디 또는 비밀번호가 맞지 않는다", "self", 401, record=False)
+    with db.connect() as conn:
         if a["status"] == "pending":
             raise GateBlocked("G1", "ACCOUNT_PENDING", "가입 승인 대기 중이다 — 운영 관리자가 승인하면 로그인할 수 있다", "operator", 403, record=False)
         if a["status"] != "active":
             raise GateBlocked("G1", "ACCOUNT_DISABLED", "정지된 계정이다 — 운영 관리자에게 문의", "operator", 403, record=False)
+        conn.execute(text("DELETE FROM login_attempt WHERE login_id=:l"), {"l": lid})
         token = secrets.token_urlsafe(32)
         now, exp = db.now_iso(), _plus_hours(SESSION_HOURS)
         db.insert(conn, "auth_session", {"account_id": a["account_id"], "token_hash": sha256(token), "created_at": now, "expires_at": exp, "revoked_at": None})

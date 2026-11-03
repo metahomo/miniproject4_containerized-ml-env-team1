@@ -86,6 +86,11 @@ def update_account(account_id: int, body: AccountUpdate, admin: str = Depends(re
     return accounts.update_account(account_id, body.model_dump(exclude_none=True), admin)
 
 
+@admin_router.post("/accounts/{account_id}/unlock", summary="로그인 잠금 해제 — 실패 횟수도 지운다 (잠겨 있지 않으면 바뀌는 것 없음)")
+def unlock_account(account_id: int, admin: str = Depends(require_admin)) -> dict:
+    return accounts.unlock_account(account_id, admin)
+
+
 @admin_router.get("/accounts/{account_id}/changes", summary="계정 역할·상태 변경 이력 — 누가 언제 무엇을 바꿨는지 (최신 순)")
 def account_changes(account_id: int) -> List[dict]:
     return accounts.account_changes(account_id)

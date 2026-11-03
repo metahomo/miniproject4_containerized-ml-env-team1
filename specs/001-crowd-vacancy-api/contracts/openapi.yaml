@@ -787,6 +787,7 @@ paths:
         "200": { description: "token·expires_at·account", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
         "401": { description: "G1 LOGIN_FAILED", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
         "403": { description: "G1 ACCOUNT_DISABLED(정지)", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+        "429": { description: "G1 LOGIN_LOCKED — 15분 안에 5번 실패하면 15분 잠금 (비밀번호가 맞아도 거부)", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
   /v1/auth/roles:
     get:
       tags: [auth]
@@ -848,7 +849,7 @@ paths:
       security: [ { BearerAuth: [] }, { AdminKey: [] } ]
       parameters: [ { name: status, in: query, required: false, schema: { type: string, enum: [pending, active, disabled] } } ]
       responses:
-        "200": { description: "계정(비밀번호 없음)·active_keys", content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+        "200": { description: "계정(비밀번호 없음)·active_keys·locked_until(잠겨 있지 않으면 null)", content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
     post:
       tags: [admin]
       summary: 계정 만들기 (관제 담당자·운영 관리자 등 — 바로 사용)
@@ -874,6 +875,15 @@ paths:
             schema: { type: object, additionalProperties: false, properties: { role: { type: string, enum: [admin, controller, user] }, status: { type: string, enum: [pending, active, disabled] } } }
       responses:
         "200": { description: 바뀐 계정, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+        "404": { description: "G3 ACCOUNT_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
+  /v1/admin/accounts/{account_id}/unlock:
+    post:
+      tags: [admin]
+      summary: 로그인 잠금 해제 — 실패 횟수도 지운다 (잠겨 있지 않으면 바뀌는 것 없음)
+      security: [ { BearerAuth: [] }, { AdminKey: [] } ]
+      parameters: [ { name: account_id, in: path, required: true, schema: { type: integer } } ]
+      responses:
+        "200": { description: "계정 (locked_until 은 null)", content: { application/json: { schema: { type: object, additionalProperties: true } } } }
         "404": { description: "G3 ACCOUNT_NOT_FOUND", content: { application/json: { schema: { $ref: "#/components/schemas/GateError" } } } }
   /v1/admin/accounts/{account_id}/changes:
     get:

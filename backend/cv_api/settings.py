@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     ADMIN_KEYS: str = "op1:changeme-admin"
     # 위 기본 키(저장소·문서에 공개된 값)로는 운영 실행(cv_api.serve)이 뜨지 않는다. 로컬 개발에서만 1 (BE-1)
     ALLOW_INSECURE_KEYS: bool = False
+    # 로그인 시도 제한 — LOGIN_LOCK_MINUTES 안에 LOGIN_MAX_FAILS 번 실패하면 같은 시간만큼 잠근다 (2026-11-02 사용자 결정)
+    LOGIN_MAX_FAILS: int = 5
+    LOGIN_LOCK_MINUTES: int = 15
+    SECURITY_LOG_PATH: str = ""   # 잠금·해제 기록 파일. 비면 표준 출력에만 남긴다. 도커는 Dockerfile 에서 /data/logs/security.log
 
     # ---- 요청 규격 (R4, G2, BR-CV-11) ----
     IMAGE_FORMATS: Tuple[str, ...] = ("jpeg", "png")
