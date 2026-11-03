@@ -251,7 +251,11 @@ def due_cameras(now_mono: Optional[float] = None) -> List[Dict[str, Any]]:
 
 async def scheduler_loop(s: Settings, tick_s: float = 1.0) -> None:
     """켜진 카메라를 주기마다 진단. 검출기 1개를 나눠 쓰므로 한 번에 1건씩 순서대로 (Ollama 동시 1건 규칙과도 맞다)."""
+    from .ops import runtime
+
     loop = asyncio.get_running_loop()
+    while runtime.instance_id is None:          # startup(DDL 적용) 이 끝날 때까지 대기 (ops_loop 와 같다)
+        await asyncio.sleep(tick_s)
     while True:
         try:
             for r in await loop.run_in_executor(None, due_cameras):

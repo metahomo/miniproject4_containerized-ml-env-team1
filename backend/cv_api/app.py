@@ -45,6 +45,16 @@ def routers_for(role: Role) -> list[APIRouter]:
     return {"api": api, "web": web, "all": api + web}[role]
 
 
+def _logged_startup(fn):
+    """기동 작업은 스레드에서 돌고 결과를 아무도 기다리지 않는다 — 실패하면 원인이 사라지지 않게 로그로 남긴다."""
+    def run():
+        try:
+            fn()
+        except Exception:
+            log.exception("startup failed: %s", fn.__name__)
+    return run
+
+
 def _api_lifespan(role: Role):
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -63,7 +73,7 @@ def _api_lifespan(role: Role):
                 log.warning("guide publish failed: %s", e)
             return out
 
-        app.state.startup_task = loop.run_in_executor(None, _start)
+        app.state.startup_task = loop.run_in_executor(None, _logged_startup(_start))
         app.state.ops_task = asyncio.create_task(ops.ops_loop(s))
         from .services import camera_power
         app.state.camera_task = asyncio.create_task(camera_power.scheduler_loop(s))   # S2b: 켜진 카메라 주기 자동 진단
@@ -83,7 +93,7 @@ async def _web_lifespan(app: FastAPI):
     from . import db
 
     loop = asyncio.get_running_loop()
-    app.state.startup_task = loop.run_in_executor(None, db.init_db)   # 멱등. 진단 API 와 동시에 떠도 안전 (db.apply_migrations)
+    app.state.startup_task = loop.run_in_executor(None, _logged_startup(db.init_db))   # 멱등. 진단 API 와 동시에 떠도 안전 (db.apply_migrations)
     yield
     await asyncio.wait({app.state.startup_task}, timeout=30)
 
