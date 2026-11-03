@@ -146,8 +146,13 @@ def diagnose(
         raise GateBlocked("G5", "MODEL_NOT_LOADED", "모델 적재·웜업 미완료", "operator", 503, subject_kind="instance", subject_id=str(ops.runtime.instance_id or 0))
     raw_unknown: Optional[str] = None                              # assessment_warning.raw_code (unknown 은 1건)
     t_inf = time.perf_counter()
+    capacity = int(spec["capacity"]) if spec and spec.get("capacity") else None
     try:
-        boxes = det.detect(frame.img, timeout_s=s.INFER_TIMEOUT_S)
+        from ..predict import DualModelDetector
+        if isinstance(det, DualModelDetector):
+            boxes = det.detect(frame.img, timeout_s=s.INFER_TIMEOUT_S, capacity=capacity)
+        else:
+            boxes = det.detect(frame.img, timeout_s=s.INFER_TIMEOUT_S)
     except DetectorNotReady as e:
         # UC13 E2: 추론 실패는 확정 수치 없이 판독 불확실 + unknown 경고 (NFR-05 준용)
         boxes = []
@@ -217,7 +222,11 @@ def diagnose(
         row["crowded_ratio"] = fsum.get("crowded_ratio")
         row["close_pairs_count"] = fsum.get("close_pairs_count")
         row["avg_distance_px"] = fsum.get("avg_distance_px")
-        row["vacancy_status_kr"] = fsum.get("vacancy_status_kr")
+        # 카메라 정원 및 판정 결과(level) 동기화
+        if level == "uncertain":
+            row["vacancy_status_kr"] = "판독불가"
+        else:
+            row["vacancy_status_kr"] = fsum.get("vacancy_status_kr")
 
     return row
 

@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     # ollama_vl: 공유 Ollama 서버의 비전 모델로 사람 박스를 JSON 으로 받음
     # stub     : 테스트용 고정 박스
     DETECTOR: str = "dual"
-    APP_VERSION: str = "1.3"
+    APP_VERSION: str = "v1.3"
     MODEL_REPO: str = "https://github.com/MaxTheTechy/yolo"
     MODEL_WEIGHTS: Path = BACKEND_DIR / "models" / "head_crowdhuman_n1280.pt"
     MODEL_DISTANCE_WEIGHTS: Path = BACKEND_DIR / "models" / "yolo11n.pt"

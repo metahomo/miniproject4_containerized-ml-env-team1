@@ -1,6 +1,6 @@
 {
   "repo_url": "local:scripts/train (base yolov8n, CrowdHuman val 4,370장, head 1클래스)",
-  "commit_hash": "weights-sha256:d740367868d50137",
+  "commit_hash": "weights-sha256:f6369bdc2cd90d68",
   "weights_file": "head_crowdhuman_n1280.pt",
   "license": "AGPL-3.0(YOLOv8) + CrowdHuman CC BY-NC 4.0 — 운영 사용 가부 발주 측 확인 필요",
   "required_versions": "ultralytics>=8.4, torch>=2.1, imgsz 1280",
