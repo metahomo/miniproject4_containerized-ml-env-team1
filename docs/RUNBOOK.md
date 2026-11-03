@@ -30,7 +30,7 @@ backend ---> ./models folder (.pt, .json, read-only)
 
 ## 2. 기동
 
-사전 준비: Docker Desktop(메모리 4GB 이상 권장). 운영 폴더에 `docker-compose.yml`, `docker.env.example`, `models/`를 둡니다. 모든 명령은 이 폴더의 PowerShell에서 실행합니다.
+사전 준비: Docker Desktop(메모리 4GB 이상 권장). 운영 폴더에 `docker-compose.yml`, `docker.env.example`, `models/`를 둡니다. 모든 명령은 이 폴더의 PowerShell에서 실행합니다. WSL에서 실행할 때는 `curl.exe` 대신 `curl`을 쓰고, `.env`는 `echo "CV_TAG=v1.1" > .env`로 만듭니다.
 
 ### 처음 실행할 때
 
@@ -132,21 +132,26 @@ docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출
 
 > **주의:** `docker compose down -v`는 데이터 볼륨까지 지웁니다. 운영 중에는 쓰지 않습니다.
 
-백업과 복구는 백엔드를 잠시 멈추므로 진단 서비스가 중단됩니다.
-
 ### 백업
 
+백엔드를 멈추지 않고 SQLite 백업 기능으로 복사합니다. 아직 `cv.db`에 합쳐지지 않은 최근 기록(`cv.db-wal`)도 함께 담깁니다.
+
 ```powershell
-docker compose stop backend
-docker compose cp backend:/data/cv.db ./cv-backup.db
-docker compose start backend
+docker compose exec -T backend python -c "import sqlite3; s=sqlite3.connect('/data/cv.db'); d=sqlite3.connect('/data/cv-backup.db'); s.backup(d); d.close(); s.close(); print('backup ok')"
+docker compose exec -T backend python -c "import sqlite3; c=sqlite3.connect('/data/cv-backup.db'); print(c.execute('pragma integrity_check').fetchone()[0], c.execute('select count(*) from account').fetchone()[0], c.execute('select count(*) from route').fetchone()[0])"
+docker compose cp backend:/data/cv-backup.db ./cv-backup.db
+docker compose exec -T backend rm /data/cv-backup.db
 ```
+
+두 번째 명령은 `ok <계정 수> <노선 수>`를 출력합니다. `ok`가 아니거나 수가 현재 운영 상태와 다르면 그 백업을 쓰지 않습니다.
 
 백업 파일에는 계정 정보가 들어 있습니다. 접근이 제한된 곳에 보관합니다.
 
 ### 복구
 
-복구하면 백업 이후의 데이터는 사라집니다. 현재 DB를 다른 파일 이름으로 먼저 백업합니다.
+복구는 백엔드를 잠시 멈추므로 진단 서비스가 중단됩니다. 백업 이후의 데이터는 사라지므로, 현재 DB를 다른 파일 이름으로 먼저 백업합니다.
+
+`cv-backup.db`를 현재 폴더에 두고 실행합니다.
 
 ```powershell
 docker compose stop backend
@@ -158,7 +163,7 @@ docker compose start backend
 
 ## 7. 버전 변경과 롤백
 
-현재 Docker Hub에는 v1.0과 같은 이미지인 `latest`만 있어, 되돌릴 이전 버전이 없습니다. 아래 절차는 새 버전이 나왔을 때 사용합니다. 배포한 버전 태그는 다시 푸시하지 않습니다.
+되돌릴 수 있는 이전 버전은 v1.0입니다. 운영에서는 `latest` 대신 `.env`의 `CV_TAG`로 버전을 고정합니다. 배포한 버전 태그는 다시 푸시하지 않습니다.
 
 ### 버전 올리기
 
@@ -166,13 +171,18 @@ docker compose start backend
 2. `.env`의 `CV_TAG`를 새 버전으로 바꿉니다. 예: `CV_TAG=v2.0`
 3. `docker compose pull` 후 `docker compose up -d`를 실행합니다.
 4. 3장 확인을 수행하고, 이 문서의 운영 버전을 갱신합니다.
+5. 운영 서버에서 확인을 마친 뒤 Docker Hub의 `latest`를 새 버전으로 옮깁니다.
 
 ### 롤백
 
 1. `.env`를 `CV_TAG=v1.0`으로 되돌립니다.
 2. `docker compose pull` 후 `docker compose up -d`를 실행합니다.
-3. DB 구조가 바뀌었다면 업그레이드 전 백업으로 복구합니다.
-4. 3장 확인을 수행합니다.
+3. 3장 확인을 수행합니다. 이미지 버전의 정상 결과는 `backend-v1.0`, `frontend-v1.0`입니다.
+4. 데이터까지 업그레이드 전으로 되돌릴 때만 6장대로 백업을 복구합니다.
+
+v1.1에서 v1.0으로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그인, 쓰기가 정상입니다(2026-11-03 확인). 다만 v1.0에는 로그인 시도 제한과 잠금 해제가 없습니다.
+
+> **주의:** v1.0은 빈 볼륨에서 처음 시작할 때 DB 초기화가 실패해 준비가 끝나지 않을 수 있습니다. 기존 볼륨으로 되돌릴 때만 사용합니다.
 
 ## 8. 민감정보
 
