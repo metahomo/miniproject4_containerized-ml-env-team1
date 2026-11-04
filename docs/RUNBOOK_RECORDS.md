@@ -2,6 +2,37 @@
 
 운영 절차는 [RUNBOOK.md](RUNBOOK.md)를 봅니다. 이 문서는 버전별 확인 결과만 기록합니다.
 
+## v1.4 빌드·검증 기록
+
+2026-11-04에 WSL(Ubuntu 24.04) + Docker Desktop에서 `develop` `69e1ad7`(#61 모니터링, #64·#65 이중 모델 포함)로 v1.4 이미지를 만들고 확인했습니다(RUNBOOK 10장 절차). 이미지는 빌드한 사람의 Docker Hub 공개 저장소 `ryujh33/sumtong`에 올립니다(v1.1 이하는 `hyungnss/sumtong`).
+
+| 항목 | 결과 |
+|---|---|
+| 소스 | `develop` `69e1ad7` |
+| 백엔드 이미지 | `ryujh33/sumtong:backend-v1.4`, 이미지 ID `sha256:16a8d31b6c249157d131e1ed6e0dae69481a9cbf87a288216b016e6af6d7a091`, 디스크 2.83GB / 내려받기 약 660MB |
+| 프론트엔드 이미지 | `ryujh33/sumtong:frontend-v1.4`, 이미지 ID `sha256:a54de3283d0ac34276168ba6a843a54ceda1c6fec0bc5d1fdb5529534294ee81`, 디스크 92.2MB / 내려받기 약 26.5MB |
+| Docker Hub digest | 백엔드 `sha256:2eda79d30bd10feae441fce6894996ef2f70047020fcee2a266f695952770824`, 프론트엔드 `sha256:3c5a27f7f85eed5cb93bebb19e0a49e1158e005afe25eb174fe05f3dc5312731` |
+| 빌드 시간 | 8.9초 (이전 빌드 캐시 사용) |
+| 백엔드 회귀 테스트 | `pytest` 180 passed, 2 skipped (Python 3.11) |
+| 기동 | 4개 서비스(backend, frontend, prometheus, grafana) `(healthy)` |
+| 이중 모델 | `readiness` `ready`, `detector.kind` `dual`, 로그 `detector ready: dual head_crowdhuman_n1280.pt+yolo11n.pt (6.2s)`, 적재 2.91초 |
+| 모델 해시 | `head_crowdhuman_n1280.pt` `d740367868d50137…`, `yolo11n.pt` `0ebbc80d4a7680d1…` |
+| 지표 | 내부 9524 `/metrics`에서 `cv_detector_loaded 1.0`, 공개 9544 `/metrics`는 404 |
+| 대시보드 | 진단 후 진단 결과·최근 추론 시간(336ms)·경로별 요청 수 반영, 응답 시간 p95 약 550ms 이하 |
+| 메모리 (대기) | 백엔드 451.6MiB, 프론트엔드 8.2MiB, Grafana 142.9MiB, Prometheus 48.6MiB |
+| 모니터링 볼륨 | `sumtong_prom-data` 4.5MB(약 19시간 수집), `sumtong_grafana-data` 52.4MB |
+
+### PC 재부팅 후 재기동 (v1.3 이하에서도 해당)
+
+| 항목 | 결과 |
+|---|---|
+| 재부팅 직후 (2026-11-04) | 컨테이너는 자동으로 다시 떴지만 백엔드 `unavailable`(컨테이너 안 `/app/backend/models` 비어 있음, 호스트 `models/`에는 파일 있음), Prometheus는 `prometheus.yml` 마운트 오류로 시작 실패. 5분 기다려도 풀리지 않음 |
+| 조치 | `docker compose up -d --force-recreate` 후 백엔드 `ready`, 4개 서비스 `(healthy)`. RUNBOOK 2장 "PC를 다시 켠 뒤"에 반영 |
+
+### 실행하지 않은 항목
+
+운영 서버 배포, Windows PowerShell에서의 `COMPOSE_FILE`(`;` 구분자)·`Add-Content` 절차, `grafana cli admin reset-admin-password`, 포트 변경(`PROM_PORT`, `GRAFANA_PORT`), 캐시 없는 첫 빌드 시간 측정.
+
 ## v1.3 검증 기록
 
 2026-11-03에 Windows 11 및 Docker Compose 환경에서 YOLOv8 Head + YOLO11 이중 융합 모델 추론 엔진과 REST API를 실측 검증했습니다.

@@ -1,11 +1,11 @@
-# 숨통 운영 안내 (Runbook) — v1.3
+# 숨통 운영 안내 (Runbook) — v1.4
 
 | 항목 | 값 |
 |---|---|
-| 운영 버전 | `CV_TAG=v1.3` |
-| 담당자 | (입력 필요) |
+| 운영 버전 | `CV_TAG=v1.4` (v1.3 이중 모델 + Prometheus·Grafana 모니터링) |
+| 담당자 | 류재현 |
 | 장애 연락처 | (입력 필요) |
-| 기준일 | 2026-11-03 |
+| 기준일 | 2026-11-04 |
 
 ## 1. 구성
 
@@ -15,29 +15,36 @@ API client ---------------- 9544 -----------------------------> backend
 
 backend ---> sumtong_cv-data volume (SQLite: /data/cv.db)
 backend ---> ./models folder (이중 모델: head_crowdhuman_n1280.pt, yolo11n.pt, 사이드카 .json, read-only)
+
+prometheus (127.0.0.1:9090) ---- 15초마다 backend:9524/metrics 수집 ----> backend
+grafana    (127.0.0.1:3000) ---- 조회 ----> prometheus
 ```
 
 | 항목 | 값 |
 |---|---|
-| 백엔드 이미지 | `hyungnss/sumtong:backend-v1.3` |
-| 프론트엔드 이미지 | `hyungnss/sumtong:frontend-v1.3` |
-| 소스 | Git 브랜치/태그 `v1.3` |
+| 백엔드 이미지 | `ryujh33/sumtong:backend-v1.4` (`sha256:2eda79d30bd10feae441fce6894996ef2f70047020fcee2a266f695952770824`) |
+| 프론트엔드 이미지 | `ryujh33/sumtong:frontend-v1.4` (`sha256:3c5a27f7f85eed5cb93bebb19e0a49e1158e005afe25eb174fe05f3dc5312731`) |
+| 이미지 저장소 | v1.4부터 `ryujh33/sumtong`(Docker Hub 공개 저장소). v1.1 이하는 `hyungnss/sumtong`. `.env`의 `CV_IMAGE`로 고릅니다 |
+| 소스 | `develop` `69e1ad7` (Git 태그 `v1.4` 예정) |
 | 모델 | 이중 융합 모델 (두부: `head_crowdhuman_n1280.pt`, 전신/거리: `yolo11n.pt` 및 `.json`). 호스트 `./models` 폴더에서 마운트 |
 | 포트 | 웹 9504, API 9544 |
 | 데이터 | `sumtong_cv-data` 볼륨, `/data/cv.db` |
 | 보안 로그 | 같은 볼륨의 `/data/logs/security.log`. 계정 잠금과 잠금 해제 기록, 시간은 UTC |
-| 설정 파일 | `docker.env`: 백엔드 설정과 키 해시. `.env`: `CV_TAG=v1.3`, 포트, `CV_MODELS_DIR=./models` |
+| 설정 파일 | `docker.env`: 백엔드 설정과 키 해시. `.env`: `CV_IMAGE=ryujh33/sumtong`, `CV_TAG=v1.4`, 포트, `CV_MODELS_DIR=./models`, `GRAFANA_ADMIN_PASSWORD`, `COMPOSE_FILE` |
+| 모니터링 이미지 | `prom/prometheus:v3.5.0`, `grafana/grafana:12.1.1` (`docker-compose.monitoring.yml`에 버전 고정) |
+| 모니터링 포트 | Prometheus 9090, Grafana 3000. 둘 다 `127.0.0.1`에만 열려 운영 PC에서만 접속됩니다. 지표 경로 `/metrics`는 내부 포트 9524에서만 응답하고 공개 포트 9544에서는 404입니다 |
+| 모니터링 데이터 | `sumtong_prom-data` 볼륨(지표, 7일 보관 후 자동 삭제), `sumtong_grafana-data` 볼륨(Grafana 계정·설정). 대시보드와 수집 설정은 `monitoring/` 폴더에서 자동 등록 |
 
 ## 2. 기동
 
-사전 준비: Docker Desktop(메모리 4GB 이상 권장). 운영 폴더에 `docker-compose.yml`, `docker.env.example`, `models/`를 둡니다. `models/` 폴더 안에는 `head_crowdhuman_n1280.pt`와 `yolo11n.pt` 및 메타데이터 `.json` 파일이 포함되어야 합니다. 모든 명령은 이 폴더의 PowerShell에서 실행합니다. WSL에서 실행할 때는 `curl.exe` 대신 `curl`을 쓰고, `.env`는 `echo "CV_TAG=v1.3" > .env`로 만듭니다.
+사전 준비: Docker Desktop(메모리 4GB 이상 권장). 운영 폴더에 `docker-compose.yml`, `docker-compose.monitoring.yml`, `monitoring/` 폴더, `docker.env.example`, `models/`를 둡니다. `models/` 폴더 안에는 `head_crowdhuman_n1280.pt`와 `yolo11n.pt` 및 메타데이터 `.json` 파일이 포함되어야 합니다. 모든 명령은 이 폴더의 PowerShell에서 실행합니다. WSL에서 실행할 때는 `curl.exe` 대신 `curl`을 쓰고, `.env`는 `printf "CV_IMAGE=ryujh33/sumtong\nCV_TAG=v1.4\n" > .env`로 만듭니다.
 
 ### 처음 실행할 때
 
-1. 버전을 지정하고 설정 파일을 만듭니다.
+1. 이미지 저장소와 버전을 지정하고 설정 파일을 만듭니다. `CV_IMAGE`가 없으면 v1.4가 없는 `hyungnss/sumtong`에서 받으려다 실패합니다.
 
     ```powershell
-    Set-Content .env "CV_TAG=v1.3" -Encoding ascii
+    Set-Content .env "CV_IMAGE=ryujh33/sumtong","CV_TAG=v1.4" -Encoding ascii
     Copy-Item docker.env.example docker.env
     ```
 
@@ -63,6 +70,20 @@ backend ---> ./models folder (이중 모델: head_crowdhuman_n1280.pt, yolo11n.p
     ADMIN_KEYS=op1:<관리자 키 해시>
     ```
 
+4. 모니터링(Prometheus·Grafana)을 함께 켭니다. Grafana 관리자 비밀번호를 만들어 안전한 곳에 보관하고, `.env`에 두 줄을 추가합니다.
+
+    ```powershell
+    docker run --rm python:3.11-slim python -c "import secrets;print(secrets.token_urlsafe(18))"
+    Add-Content .env "GRAFANA_ADMIN_PASSWORD=<만든 비밀번호>" -Encoding ascii
+    Add-Content .env "COMPOSE_FILE=docker-compose.yml;docker-compose.monitoring.yml" -Encoding ascii
+    docker compose config --services
+    ```
+
+    - 마지막 명령이 `backend`, `frontend`, `prometheus`, `grafana` 네 줄을 출력해야 합니다. 두 줄만 나오면 `COMPOSE_FILE`이 적용되지 않은 것입니다.
+    - `COMPOSE_FILE`의 파일 구분자는 Windows(PowerShell)에서 `;`, WSL·Linux에서 `:`입니다. WSL에서는 `echo "COMPOSE_FILE=docker-compose.yml:docker-compose.monitoring.yml" >> .env`로 넣습니다.
+    - `GRAFANA_ADMIN_PASSWORD`는 Grafana를 **처음** 시작할 때만 적용됩니다. 나중에 바꾸는 방법은 8장을 봅니다.
+    - 모니터링 없이 운영하려면 이 단계를 건너뜁니다. 숨통 서비스에는 영향이 없습니다.
+
 ### 기동과 준비 확인
 
 ```powershell
@@ -72,7 +93,28 @@ curl.exe -s http://localhost:9544/v1/readiness
 
 - 준비 완료 기준: `"readiness":"ready"`. `preparing`이면 잠시 후 다시 확인합니다.
 - 컨테이너 상태: `readiness`가 `ready`일 때만 `(healthy)`로 표시됩니다. 모델이 없어 `unavailable`이면 약 3분 뒤 `(unhealthy)`로 바뀝니다.
-- 통상 소요 시간: 이미지를 받아 둔 상태에서 6~13초(2026-11-03, 35회 실측). 처음에는 이미지(약 650MB)를 받느라 몇 분 더 걸립니다.
+- 통상 소요 시간: 이미지를 받아 둔 상태에서 6~13초(2026-11-03, 35회 실측). 처음에는 이미지(백엔드 약 660MB, 모니터링 포함 시 Prometheus·Grafana 이미지 추가)를 받느라 몇 분 더 걸립니다.
+
+### PC를 다시 켠 뒤
+
+1. Docker Desktop을 실행하고 **Engine running**이 될 때까지 기다립니다.
+2. 운영 폴더에서 컨테이너를 다시 만들어 기동합니다. 데이터 볼륨은 유지됩니다.
+
+    ```powershell
+    docker compose up -d --force-recreate
+    ```
+
+3. 3장 확인을 수행합니다. 특히 `readiness`가 `ready`인지 봅니다.
+
+재부팅 직후에는 Docker Desktop이 폴더 연결을 제대로 잡지 못해, 컨테이너가 자동으로 다시 떠도 `models/`가 빈 폴더로 보이거나 Prometheus가 시작하지 못할 수 있습니다(5장). `--force-recreate`는 연결을 다시 잡습니다.
+
+### 모니터링 끄기
+
+```powershell
+docker compose stop prometheus grafana
+```
+
+계속 끄려면 `.env`의 `COMPOSE_FILE` 줄을 지웁니다. 숨통 서비스(backend, frontend)에는 영향이 없습니다.
 
 ### 최초 1회 작업
 
@@ -95,12 +137,16 @@ curl.exe -s http://localhost:9544/v1/readiness
 
 | 확인 항목 | 명령 또는 위치 | 정상 결과 |
 |---|---|---|
-| 이미지 버전 | `docker compose images` | `hyungnss/sumtong:backend-v1.3`, `hyungnss/sumtong:frontend-v1.3` (또는 `backend-v1.3`, `frontend-v1.3`) |
+| 이미지 버전 | `docker compose images` | 저장소 `ryujh33/sumtong`, 태그 `backend-v1.4`, `frontend-v1.4` |
 | 준비 상태, 모델 | `curl.exe -s http://localhost:9544/v1/readiness` | `"readiness":"ready"`, `"model_commit":"weights-sha256:d740367868d50137"` |
 | 로그 | `docker compose logs backend` | `detector ready: dual head_crowdhuman_n1280.pt+yolo11n.pt` |
 | 이중 모델 CLI 추론 | `docker compose exec backend python -m cv_api.tools.infer_dual --source samples/bus_full.jpg` | 두부 9명, 전신 7명 검출 및 거리 쌍 요약 정상 출력 |
 | 웹 화면 | `http://localhost:9504` | 화면 표시 |
 | API 문서 | `http://localhost:9544/docs` | Swagger 표시 |
+| 모니터링 컨테이너 | `docker compose ps` | `prometheus`, `grafana` 모두 `(healthy)` |
+| 지표 외부 차단 | `curl.exe -s -o NUL -w "%{http_code}" http://localhost:9544/metrics` | `404` |
+| 수집 대상 | `http://localhost:9090/targets` | `prometheus`, `sumtong-backend` 모두 **UP** |
+| 대시보드 | `http://localhost:3000` (`admin` / `.env`의 비밀번호) → **Dashboards** → **숨통** → **숨통 백엔드 개요** | "백엔드 수집 상태", "검출기 준비"가 **예** |
 
 ### 샘플 동작 (시연·교차실행 환경 전용)
 
@@ -114,9 +160,26 @@ docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출
 
 | 점검 항목 | 명령 | 정상 기준 |
 |---|---|---|
-| 컨테이너 상태 | `docker compose ps` | 두 서비스 `(healthy)`. `Restarting`이 없어야 합니다 |
+| 컨테이너 상태 | `docker compose ps` | 모든 서비스 `(healthy)`(모니터링 포함 시 4개). `Restarting`이 없어야 합니다 |
 | 실시간 로그 | `docker compose logs -f backend` | `ERROR`가 반복되지 않아야 합니다. `Ctrl+C`로 종료합니다 |
-| CPU, 메모리 | `docker stats --no-stream` | 메모리가 한도에 가깝지 않아야 합니다. 기동 직후 대기 상태 실측: 백엔드 약 494MiB, 프론트엔드 약 7MiB |
+| CPU, 메모리 | `docker stats --no-stream` | 메모리가 한도에 가깝지 않아야 합니다. v1.4 대기 상태 실측(2026-11-04): 백엔드 약 452MiB, 프론트엔드 약 8MiB, Grafana 약 143MiB, Prometheus 약 49MiB |
+| 대시보드 | Grafana **숨통 백엔드 개요** (30초마다 새로고침) | 아래 "대시보드 점검 기준" |
+| 모니터링 디스크 | `docker system df -v` | `sumtong_prom-data`가 7일 보관 기준 이상으로 계속 커지지 않아야 합니다. 실측: 약 19시간 수집 후 4.5MB, `sumtong_grafana-data` 52MB |
+
+### 대시보드 점검 기준
+
+| 패널 | 정상 | 이상일 때 할 일 |
+|---|---|---|
+| 백엔드 수집 상태 | 예 | **아니오** → 5장 "수집 대상 DOWN" |
+| 검출기 준비 | 예 | **아니오** → 5장 "백엔드 `(unhealthy)`, 진단 불가" |
+| 최근 추론 시간 | 2초 미만(초록). 기동 직후 첫 값은 예열이라 2초를 넘을 수 있습니다(실측 3.3초) | 진단 후에도 계속 빨강이면 `docker stats`로 CPU 확인 |
+| 검출기 적재 시간 | 수 초(실측 2.9초). 재시작할 때마다 갱신됩니다 | 평소보다 크게 길어지면 디스크·메모리 확인 |
+| BIS 오늘 호출 수 | 하루 할당량 이내 | 할당량에 가까우면 담당자에게 알림 |
+| 5분 오류 비율 (5xx) | 0% | 0%보다 크면 `docker compose logs backend`에서 `ERROR` 확인 |
+| 응답 시간 p95 | 빨간 선(2초, NFR-01) 아래 | 선을 넘는 시간이 이어지면 요청 수와 CPU를 함께 확인 |
+| 백엔드 메모리·CPU | 진단할 때 올라갔다가 평평하게 유지 | 내려오지 않고 계속 오르면 재시작 후 담당자에게 알림 |
+
+진단 결과 패널은 진단 요청이 있어야 채워집니다. 기동 직후 `No data`는 정상입니다. 값이 소수로 보이는 것은 1시간 누적을 추정하는 계산 방식 때문입니다.
 
 ## 5. 장애 대응
 
@@ -125,6 +188,12 @@ docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출
 | 백엔드 `(unhealthy)`, 진단 불가 | `readiness`가 `unavailable`, `model_commit`이 `weights-sha256:missing`. 로그에 `detector load failed` | `models/` 폴더가 비었거나 이중 모델 파일(`head_crowdhuman_n1280.pt`, `yolo11n.pt`)이 없음 | `models/`의 이중 `.pt`, `.json`을 확인한 뒤 `docker compose up -d --force-recreate backend` | 3장 확인 |
 | 로그인할 때 `로그인 실패가 많아 잠겼다` (HTTP 429) | **계정 · 키 관리**에 `잠김` 표시. `docker compose exec backend cat /data/logs/security.log`에 `login_locked` | 15분 안에 로그인 5번 실패 | 15분 뒤 자동 해제. 급하면 운영 관리자가 **잠금 해제** 버튼을 누름. 운영 관리자가 잠겼으면 관리자 키로 로그인해 해제 | 해당 계정 로그인 성공 |
 | 백엔드 `Restarting` 반복 | 로그에 `시작 거부` | `docker.env`의 `API_KEYS`, `ADMIN_KEYS`가 비었거나 기본값 | 2장대로 키를 넣고 `docker compose up -d` | 3장 확인 |
+| 재부팅 후 백엔드 `(unhealthy)`, 진단 불가. 웹에 "서버를 준비하고 있으니" 표시 | `readiness`가 `unavailable`, 로그에 `detector load failed: 가중치 파일이 없다`. `docker compose exec backend ls -la /app/backend/models`는 비어 있는데 운영 폴더의 `models/`에는 파일이 있음 | 재부팅 직후 Docker Desktop이 `models/` 폴더 연결을 잃음 | `docker compose up -d --force-recreate`. 그래도 같으면 PowerShell에서 `wsl --shutdown` 후 Docker Desktop 재시작 | 3장 확인 |
+| 재부팅 후 `prometheus`만 시작 실패 (`error mounting ... prometheus.yml ... not a directory`) | `monitoring/prometheus/prometheus.yml`이 파일로 있는지 확인 | 위와 같음 | `docker compose up -d --force-recreate prometheus`. 파일이 폴더로 바뀌어 있으면 그 폴더를 지우고 저장소에서 파일을 다시 받음 | `prometheus` `(healthy)` |
+| 수집 대상 `sumtong-backend` **DOWN** | `http://localhost:9090/targets`의 오류 문구, `docker compose images`의 백엔드 버전 | ① 백엔드가 멈춤 ② 백엔드 이미지가 `/metrics` 미지원 버전(v1.3 이하) | ① 3장 확인부터 수행 ② `CV_TAG`를 v1.4 이상으로 올림(7장) | 대상 **UP** |
+| `prometheus`, `grafana`가 목록에 없음 (`no such service`) 또는 `GRAFANA_ADMIN_PASSWORD is missing a value` | `docker compose config --services`가 두 줄 | `.env`에 `COMPOSE_FILE`이나 비밀번호 줄이 없거나 구분자가 틀림(Windows `;`, WSL `:`) | 2장 처음 실행할 때 4번대로 다시 넣음 | 네 줄 표시 |
+| 9090 또는 3000 포트 사용 중 (`port is already allocated`) | 오류 문구 | 다른 Prometheus·Grafana(실습용 등)가 실행 중 | 다른 쪽을 끄거나 `.env`에 `PROM_PORT=19090`, `GRAFANA_PORT=13000`처럼 바꿈 | 바꾼 포트로 접속 |
+| Grafana 로그인 실패 | `.env`의 `GRAFANA_ADMIN_PASSWORD`와 비교 | 처음 기동 이후 `.env` 값을 바꿈(바꿔도 적용되지 않음) | 8장 "Grafana 비밀번호 변경" | `admin`으로 로그인 |
 | 시작 직후 로그에 `no such table` | `curl.exe -s http://localhost:9544/v1/readiness` | 새 볼륨에서 DB 준비 전에 들어온 상태 조회 | `ready`가 되면 조치 없음. 1분이 지나도 `ready`가 아니면 로그의 `startup failed` 줄을 담당자에게 전달 | `"readiness":"ready"` |
 
 `security.log`의 시간은 UTC입니다. 한국 시간은 9시간을 더합니다. 없는 아이디는 `(없는 아이디)`로 기록되며, 해제할 계정이 없으므로 15분 뒤 자동으로 풀립니다.
@@ -132,6 +201,13 @@ docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출
 ## 6. 백업과 복구
 
 > **주의:** `docker compose down -v`는 데이터 볼륨까지 지웁니다. 운영 중에는 쓰지 않습니다.
+
+모니터링 데이터(`sumtong_prom-data`, `sumtong_grafana-data`)는 백업하지 않습니다. 지표는 7일만 보관하는 보조 자료이고, 대시보드와 수집 설정은 `monitoring/` 폴더에서 다시 만들어집니다. 모니터링 데이터만 지울 때는 볼륨을 이름으로 지정합니다.
+
+```powershell
+docker compose rm -sf prometheus grafana
+docker volume rm sumtong_prom-data sumtong_grafana-data
+```
 
 ### 백업
 
@@ -176,10 +252,13 @@ docker compose start backend
 
 ### 롤백
 
-1. `.env`를 `CV_TAG=v1.1`로 되돌립니다.
+1. `.env`를 `CV_IMAGE=hyungnss/sumtong`, `CV_TAG=v1.1`로 되돌립니다. v1.1은 `hyungnss/sumtong` 저장소에 있습니다.
 2. `docker compose pull` 후 `docker compose up -d`를 실행합니다.
 3. 3장 확인을 수행합니다. 이미지 버전의 정상 결과는 `backend-v1.1`, `frontend-v1.1`입니다.
 4. 데이터까지 업그레이드 전으로 되돌릴 때만 6장대로 백업을 복구합니다.
+
+- 모니터링 이미지는 `docker-compose.monitoring.yml`에 버전이 고정되어 있어 `CV_TAG`를 바꿔도 함께 바뀌지 않습니다.
+- `/metrics`가 없는 버전(v1.3 이하)으로 롤백하면 수집 대상이 **DOWN**이 됩니다. 숨통 서비스에는 영향이 없으므로 롤백 중에는 모니터링을 끄거나(2장) DOWN을 무시합니다.
 
 v1.3에서 v1.1로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그인, 쓰기가 정상입니다(2026-11-03 확인). 다만 v1.1은 단일 모델(두부 탐지) 기반입니다.
 
@@ -192,6 +271,15 @@ v1.3에서 v1.1로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그�
 | `API_KEYS` | API 호출 키 | 호출 키 해시: `docker.env`. 호출 키 원문: (입력 필요) |
 | `ADMIN_KEYS` | 최초 관리자 로그인. 평소에는 개인 계정 사용 | 관리자 키 해시: `docker.env`. 관리자 키 원문: (입력 필요) |
 | `BIS_API_KEY` | 대전 BIS 공공 API. `EXTERNAL_PROVIDER=bis`일 때만 사용 | `docker.env` |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana `admin` 계정 최초 비밀번호. 처음 기동할 때만 적용 | `.env`. 원문: (입력 필요) |
+
+### Grafana 비밀번호 변경
+
+```powershell
+docker compose exec grafana grafana cli admin reset-admin-password <새 비밀번호>
+```
+
+바꾼 뒤 `.env`의 `GRAFANA_ADMIN_PASSWORD`도 같은 값으로 고쳐 둡니다. 볼륨을 지우고 다시 만들 때 이 값이 쓰입니다.
 
 ## 9. 교차실행 결과
 
@@ -206,3 +294,72 @@ v1.3에서 v1.1로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그�
 | 3 | 확인 | | | |
 | 4 | 장애 1종 재현 | | | |
 | 5 | 복구 | | | |
+
+## 10. 이미지 만들기와 배포 (개발 담당)
+
+새 버전 이미지를 소스에서 만들고 확인한 뒤 Docker Hub에 올리는 절차입니다. 운영 담당은 이 장이 필요 없습니다. v1.4는 빌드한 사람의 Docker Hub 계정(`ryujh33/sumtong`)에 올렸습니다. 다른 계정에 올릴 때는 아래 `ryujh33`를 그 계정으로 바꾸고 1장·2장의 `CV_IMAGE`도 함께 바꿉니다. v1.4는 2026-11-04 WSL(Ubuntu 24.04) + Docker Desktop에서 이 절차로 만들었습니다(검증 기록: RUNBOOK_RECORDS).
+
+명령은 저장소 루트의 WSL 터미널에서 실행합니다.
+
+### 준비
+
+| 항목 | 내용 |
+|---|---|
+| 소스 | `git switch develop` → `git pull`. 이미지에 넣을 커밋을 `git rev-parse --short HEAD`로 기록 (v1.4: `69e1ad7`) |
+| 모델 | 저장소 루트 `models/`에 `head_crowdhuman_n1280.pt`, `yolo11n.pt`와 각 `.json`. `.json`은 `backend/models/`에서 복사. `yolo11n.pt`는 `yolo11n.json`의 `repo_url`에서 받음 |
+| 모델 해시 | `sha256sum models/*.pt` → `head_crowdhuman_n1280.pt` `d740367868d50137…`, `yolo11n.pt` `0ebbc80d4a7680d1…` |
+| `docker.env` | `DETECTOR=dual`, `MODEL_WEIGHTS=models/head_crowdhuman_n1280.pt`, `MODEL_DISTANCE_WEIGHTS=models/yolo11n.pt`, `DISTANCE_THRESHOLD=150.0`. 예전 `DETECTOR=yolov8`이 남아 있으면 이중 모델이 꺼집니다 |
+| 버전 확인 | `docker manifest inspect ryujh33/sumtong:backend-<새 버전>`과 `hyungnss/sumtong:backend-<새 버전>`이 모두 `no such manifest`여야 합니다. 이미 쓴 버전 번호는 다시 쓰지 않습니다 |
+
+### 빌드
+
+```bash
+echo "CV_IMAGE=ryujh33/sumtong" >> .env
+echo "CV_TAG=<새 버전>" >> .env
+echo "COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml:docker-compose.monitoring.yml" >> .env
+docker compose config --images
+time docker compose build
+```
+
+- `.env`에 `CV_IMAGE`, `CV_TAG`, `COMPOSE_FILE`이 이미 있으면 추가하지 말고 값을 고칩니다.
+- `config --images`에 `ryujh33/sumtong:backend-<새 버전>`, `frontend-<새 버전>`이 나와야 합니다. 빌드할 때 이 이름이 그대로 이미지에 붙습니다.
+- 빌드 시간 실측: 캐시가 있을 때 약 9초(v1.4). 캐시가 없는 첫 빌드는 의존성 설치로 수 분 걸립니다.
+
+### 확인
+
+```bash
+docker compose up -d --force-recreate
+docker compose images
+docker image inspect --format '{{.Id}} {{.Size}}' ryujh33/sumtong:backend-<새 버전> ryujh33/sumtong:frontend-<새 버전>
+docker compose ps
+curl -s http://localhost:9544/v1/readiness; echo
+docker compose logs backend | grep detector | tail -3
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:9544/metrics
+```
+
+정상 기준은 3장과 같습니다. 추가로 아래를 확인합니다.
+
+- `readiness`의 `detector.kind`가 `dual`
+- 9544 `/metrics`가 `404`, Prometheus 수집 대상 **UP**
+- 웹에서 진단 2~3회 후 Grafana의 진단 결과 패널과 최근 추론 시간이 갱신됨
+- 테스트: `python -m pytest -q` (저장소 `backend/`, Python 3.11 가상환경) 실패 0건
+
+### 배포
+
+이미지에는 모델(`*.pt`), `docker.env`, `.env`, DB가 들어가지 않습니다(`.dockerignore`). 그래서 공개 저장소에 올려도 됩니다.
+
+```bash
+docker login -u ryujh33
+docker push ryujh33/sumtong:backend-<새 버전>
+docker push ryujh33/sumtong:frontend-<새 버전>
+docker buildx imagetools inspect ryujh33/sumtong:backend-<새 버전> | grep Digest
+docker buildx imagetools inspect ryujh33/sumtong:frontend-<새 버전> | grep Digest
+```
+
+- `docker login`은 비밀번호 대신 Docker Hub **Personal access token**(Account settings → Personal access tokens, 권한 Read & Write)을 넣습니다.
+- 처음 push하면 Docker Hub에 `sumtong` 저장소가 만들어집니다. 저장소 **Settings**에서 공개(Public)인지 확인합니다. 비공개면 다른 사람이 로그인 없이 받을 수 없습니다.
+- 출력된 digest를 1장 이미지 행에 적습니다.
+- 다른 PC에서 받아지는지 확인합니다: `docker manifest inspect ryujh33/sumtong:backend-<새 버전>`
+- 소스 커밋에 Git 태그를 붙입니다: `git tag <새 버전> <커밋>` → `git push origin <새 버전>`.
+- `latest`는 운영 서버에서 3장 확인을 마친 뒤에 옮깁니다(7장 5번).
+- 배포 후 이 문서 머리말의 운영 버전과 RUNBOOK_RECORDS의 검증 기록을 갱신합니다.
