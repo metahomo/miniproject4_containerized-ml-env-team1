@@ -9,7 +9,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     YOLO_CONFIG_DIR=/home/app/.config/Ultralytics \
-    SECURITY_LOG_PATH=/data/logs/security.log
+    SECURITY_LOG_PATH=/data/logs/security.log \
+    LOG_DIR=/data/logs
 
 # OpenCV 공유 라이브러리 — lock 에 opencv-python(ultralytics 의존)이 함께 있어 headless 만으로는 부족하다
 RUN apt-get update \

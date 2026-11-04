@@ -200,6 +200,9 @@ docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출
 | 끄기 | `docker compose down` |
 | 다시 켜기 | `docker compose up -d` |
 | 로그 보기 | `docker compose logs -f backend` (끝내기: Ctrl+C) |
+| 장애 기록 보기 | `docker compose exec backend tail -n 50 /data/logs/error.log` |
+| 전체 요청 기록 보기 | `docker compose exec backend tail -n 50 /data/logs/app.log` |
+| 보안 기록 보기 | `docker compose exec backend tail -n 50 /data/logs/security.log` |
 | 새 버전 받기 | `docker compose pull` 후 `docker compose up -d` |
 
 - 데이터(계정·카메라·진단 기록)는 `sumtong_cv-data` 라는 도커 볼륨에 저장되어 **껐다 켜도, 새 버전으로 바꿔도 남습니다.**

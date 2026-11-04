@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     LOGIN_MAX_FAILS: int = 5
     LOGIN_LOCK_MINUTES: int = 15
     SECURITY_LOG_PATH: str = ""   # 잠금·해제 기록 파일. 비면 표준 출력에만 남긴다. 도커는 Dockerfile 에서 /data/logs/security.log
+    LOG_DIR: str = ""             # app.log·error.log 폴더. 비면 표준 출력에만 남긴다. 도커는 Dockerfile 에서 /data/logs
+    LOG_SLOW_MS: int = 5000       # 이보다 오래 걸린 진단은 error.log 에도 남긴다
 
     # ---- 요청 규격 (R4, G2, BR-CV-11) ----
     IMAGE_FORMATS: Tuple[str, ...] = ("jpeg", "png")

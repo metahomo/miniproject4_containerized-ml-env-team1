@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import logging
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -22,6 +23,8 @@ from .. import db, security_log
 from ..gates import GateBlocked
 from ..rbac import ACCOUNT_ROLES
 from ..settings import get_settings
+
+log = logging.getLogger("cv_api.accounts")
 
 SESSION_HOURS = 12
 KEY_PREFIX = "cvk_"
@@ -195,6 +198,7 @@ def login(login_id: str, password: str) -> Dict[str, Any]:
             raise _login_locked()
         a = db.q1(conn, "SELECT * FROM account WHERE login_id=:l", l=lid)
     if not a or not check_password(password or "", a["password_hash"]):
+        log.info("login_failed login_id=%s", lid if a else "(없는 아이디)")   # 없는 아이디는 비밀번호를 잘못 넣은 값일 수 있다
         if _record_login_failure(lid, known=a is not None):
             raise _login_locked()
         raise GateBlocked("G1", "LOGIN_FAILED", "아이디 또는 비밀번호가 맞지 않는다", "self", 401, record=False)
