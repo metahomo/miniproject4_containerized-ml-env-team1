@@ -69,13 +69,19 @@ class Settings(BaseSettings):
     OCCLUSION_RATIO: float = 0.30
     INFER_TIMEOUT_S: float = 5.0
 
-    # ---- 검출기 (Clarifications Q12: MaxTheTechy/yolo — YOLOv8n person 검출) ----
-    # yolov8   : 프로세스(uvicorn) 안에 가중치 적재
-    # ollama_vl: 공유 Ollama 서버의 비전 모델(qwen3-vl)로 사람 박스를 JSON 으로 받음
+    # ---- 검출기 (v1.3: YOLOv8 Head + YOLO11 신체/거리 융합 지원) ----
+    # dual     : YOLOv8 Head(두부/인원) + YOLO11(신체/거리 행렬) 이중 융합
+    # yolov8   : 단일 YOLOv8 모델 적재
+    # ollama_vl: 공유 Ollama 서버의 비전 모델로 사람 박스를 JSON 으로 받음
     # stub     : 테스트용 고정 박스
-    DETECTOR: str = "yolov8"
+    DETECTOR: str = "dual"
+    APP_VERSION: str = "v1.3"
     MODEL_REPO: str = "https://github.com/MaxTheTechy/yolo"
-    MODEL_WEIGHTS: Path = BACKEND_DIR / "models" / "yolov8n.pt"
+    MODEL_WEIGHTS: Path = BACKEND_DIR / "models" / "head_crowdhuman_n1280.pt"
+    MODEL_DISTANCE_WEIGHTS: Path = BACKEND_DIR / "models" / "yolo11n.pt"
+    DISTANCE_THRESHOLD: float = 150.0       # 승객 간 근접 위험 기준 거리 (픽셀)
+    DISTANCE_PERSON_CONF_MIN: float = 0.15  # YOLO11 신체 검출 신뢰도 하한
+    HEAD_CONF_MIN: float = 0.12             # YOLOv8 머리 검출 신뢰도 하한
     MODEL_PERSON_CLASS_ID: int = 0          # MODEL_TARGET=auto 에서 클래스 이름을 못 찾을 때만 쓴다
     MODEL_TARGET: Literal["auto", "person", "head"] = "auto"   # auto: 가중치에 head 클래스가 있으면 머리 검출(기준점 = 박스 중심), 없으면 person(발 위치)
     MODEL_DEVICE: str = "cpu"
@@ -125,7 +131,7 @@ class Settings(BaseSettings):
     def _empty_to_none(cls, v):
         return None if v in ("", None) else v
 
-    @field_validator("MODEL_WEIGHTS", "FIXTURES_DIR", "SAMPLES_DIR", mode="before")
+    @field_validator("MODEL_WEIGHTS", "MODEL_DISTANCE_WEIGHTS", "FIXTURES_DIR", "SAMPLES_DIR", mode="before")
     @classmethod
     def _relative_to_backend(cls, v):
         p = Path(v)
