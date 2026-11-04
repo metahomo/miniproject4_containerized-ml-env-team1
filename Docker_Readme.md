@@ -144,8 +144,8 @@ v1.3 환경에서는 **웹 화면(UI), REST API, CLI 터미널 단독 추론**�
    - 이미지 프레임 진단 호출 예시:
      ```powershell
      curl.exe -X POST "http://localhost:9544/v1/diagnose" `
-       -H "Authorization: Bearer <호출 키 원문>" `
-       -F "image=@backend/samples/bus_full.jpg" `
+       -H "X-API-Key: <호출 키 원문>" `
+       -F "frame=@backend/samples/bus_full.jpg" `
        -F "camera_id=CAM_001"
      ```
    - 응답 JSON: 기본 점유율과 함께 이중 모델 융합 지표(`crowded_ratio`, `close_pairs_count`, `avg_distance_px`, `vacancy_status_kr`)가 반환됩니다.
@@ -153,9 +153,9 @@ v1.3 환경에서는 **웹 화면(UI), REST API, CLI 터미널 단독 추론**�
 3. **CLI 단독 이중 융합 추론 (CLI)**
    - 웹 서버나 API 호출 없이도 컨테이너 내부 추론 엔진으로 직접 분석 결과를 콘솔로 확인합니다:
      ```powershell
-     docker compose exec backend python -m cv_api.tools.infer_dual --source backend/samples/bus_full.jpg --capacity 80
+     docker compose exec backend python -m cv_api.tools.infer_dual --source samples/bus_full.jpg --capacity 80
      ```
-   - 시각화 이미지 저장: `--output result.jpg` 옵션을 추가하면 YOLOv8 두부 중심점(파란 원), YOLO11 전신 박스(녹색) 및 승객 간 근접 거리선(빨간 선)이 합성된 이미지가 생성됩니다.
+   - 시각화 이미지 저장: `--out result.jpg` 옵션을 추가하면 YOLOv8 두부 중심점(파란 원), YOLO11 전신 박스(녹색) 및 승객 간 근접 거리선(빨간 선)이 합성된 이미지가 생성됩니다.
 
 ---
 

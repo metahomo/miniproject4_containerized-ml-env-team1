@@ -37,6 +37,9 @@ backend/cv.db-wal
 # 모델 가중치 — 라이선스 미결이라 드라이브로 따로 공유한다 (.json 모델 카드는 커밋)
 backend/models/*.pt
 backend/*.pt
+models/*.pt
+*.pt
+
 # .env 사본(비밀값 포함) — 고치기 전 사본 규칙 *.bak-YYYYMMDD-HHMM
 *.bak-*
 # 프론트엔드

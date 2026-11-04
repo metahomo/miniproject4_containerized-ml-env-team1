@@ -19,8 +19,8 @@ backend ---> ./models folder (이중 모델: head_crowdhuman_n1280.pt, yolo11n.p
 
 | 항목 | 값 |
 |---|---|
-| 백엔드 이미지 | `sumtong-backend:v1.3-cv-yolo11` (또는 `hyungnss/sumtong:backend-v1.3`) |
-| 프론트엔드 이미지 | `sumtong-frontend:v1.3` (또는 `hyungnss/sumtong:frontend-v1.3`) |
+| 백엔드 이미지 | `hyungnss/sumtong:backend-v1.3` |
+| 프론트엔드 이미지 | `hyungnss/sumtong:frontend-v1.3` |
 | 소스 | Git 브랜치/태그 `v1.3` |
 | 모델 | 이중 융합 모델 (두부: `head_crowdhuman_n1280.pt`, 전신/거리: `yolo11n.pt` 및 `.json`). 호스트 `./models` 폴더에서 마운트 |
 | 포트 | 웹 9504, API 9544 |
@@ -95,10 +95,10 @@ curl.exe -s http://localhost:9544/v1/readiness
 
 | 확인 항목 | 명령 또는 위치 | 정상 결과 |
 |---|---|---|
-| 이미지 버전 | `docker compose images` | `sumtong-backend:v1.3-cv-yolo11`, `sumtong-frontend:v1.3` (또는 `backend-v1.3`, `frontend-v1.3`) |
+| 이미지 버전 | `docker compose images` | `hyungnss/sumtong:backend-v1.3`, `hyungnss/sumtong:frontend-v1.3` (또는 `backend-v1.3`, `frontend-v1.3`) |
 | 준비 상태, 모델 | `curl.exe -s http://localhost:9544/v1/readiness` | `"readiness":"ready"`, `"model_commit":"weights-sha256:d740367868d50137"` |
-| 로그 | `docker compose logs backend` | `detector ready: dual (yolov8 head + yolo11)` |
-| 이중 모델 CLI 추론 | `docker compose exec backend python -m cv_api.tools.infer_dual --source backend/samples/bus_full.jpg` | 두부 9명, 전신 7명 검출 및 거리 쌍 요약 정상 출력 |
+| 로그 | `docker compose logs backend` | `detector ready: dual head_crowdhuman_n1280.pt+yolo11n.pt` |
+| 이중 모델 CLI 추론 | `docker compose exec backend python -m cv_api.tools.infer_dual --source samples/bus_full.jpg` | 두부 9명, 전신 7명 검출 및 거리 쌍 요약 정상 출력 |
 | 웹 화면 | `http://localhost:9504` | 화면 표시 |
 | API 문서 | `http://localhost:9544/docs` | Swagger 표시 |
 
@@ -164,7 +164,7 @@ docker compose start backend
 
 ## 7. 버전 변경과 롤백
 
-되돌릴 수 있는 이전 버전은 v1.0입니다. 운영에서는 `latest` 대신 `.env`의 `CV_TAG`로 버전을 고정합니다. 배포한 버전 태그는 다시 푸시하지 않습니다.
+되돌릴 수 있는 이전 버전은 v1.1입니다. 운영에서는 `latest` 대신 `.env`의 `CV_TAG`로 버전을 고정합니다. 배포한 버전 태그는 다시 푸시하지 않습니다.
 
 ### 버전 올리기
 
@@ -176,14 +176,12 @@ docker compose start backend
 
 ### 롤백
 
-1. `.env`를 `CV_TAG=v1.0`으로 되돌립니다.
+1. `.env`를 `CV_TAG=v1.1`로 되돌립니다.
 2. `docker compose pull` 후 `docker compose up -d`를 실행합니다.
-3. 3장 확인을 수행합니다. 이미지 버전의 정상 결과는 `backend-v1.0`, `frontend-v1.0`입니다.
+3. 3장 확인을 수행합니다. 이미지 버전의 정상 결과는 `backend-v1.1`, `frontend-v1.1`입니다.
 4. 데이터까지 업그레이드 전으로 되돌릴 때만 6장대로 백업을 복구합니다.
 
-v1.1에서 v1.0으로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그인, 쓰기가 정상입니다(2026-11-03 확인). 다만 v1.0에는 로그인 시도 제한과 잠금 해제가 없습니다.
-
-> **주의:** v1.0은 빈 볼륨에서 처음 시작할 때 DB 초기화가 실패해 준비가 끝나지 않을 수 있습니다. 기존 볼륨으로 되돌릴 때만 사용합니다.
+v1.3에서 v1.1로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그인, 쓰기가 정상입니다(2026-11-03 확인). 다만 v1.1은 단일 모델(두부 탐지) 기반입니다.
 
 ## 8. 민감정보
 

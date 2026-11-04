@@ -9,12 +9,12 @@
 | 항목 | 실측 결과 |
 |---|---|
 | API 단일 진단 응답 시간 | **263ms** (단일 이미지 전송 및 융합 진단 완료) |
-| 두부 탐지 인원 [Model A] | **11명** (`head_crowdhuman_n1280.pt`, 24.5MB 정식 모델) |
+| 두부 탐지 인원 [Model A] | **CLI 9명 / API 8명** (`head_crowdhuman_n1280.pt`, 24.5MB 정식 모델) *API는 ROI 다각형 및 신뢰도 기준 필터링 적용 |
 | 신체 탐지 인원 [Model B] | **7명** (`yolo11n.pt`, 5.6MB 전신 검출) |
 | 거리 행렬 및 밀집도 분석 | **21개 거리 쌍(Pairs) 산출**, 승객 간 유클리드 거리 및 근접 쌍 계산 완료 |
 | 백엔드 회귀 테스트 | `pytest backend/tests/` 176개 전체 통과 (176 passed, 2 skipped) |
 | 모델 해시 정합성 | 두부 모델 `weights-sha256:d740367868d50137`, 신체 모델 `weights-sha256:0ebbc80d4a7680d1` |
-| 도커 환경 구성 | 웹(`frontend:v1.3`) + 백엔드(`backend:v1.3-cv-yolo11`) 2개 컨테이너 기반 구동 |
+| 도커 환경 구성 | 웹(`hyungnss/sumtong:frontend-v1.3`) + 백엔드(`hyungnss/sumtong:backend-v1.3`) 2개 컨테이너 기반 구동 |
 
 ## v1.1 보안 기록
 
