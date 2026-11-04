@@ -24,14 +24,13 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
-from . import __version__
+from . import __version__, log_setup, metrics, security_log
 from .gates import GateBlocked, gate_exception_handler
 from .services import ops
 from .settings import get_settings
 
-from . import __version__, metrics
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log_setup.protect_stdout()
 log = logging.getLogger("cv_api")
 access_log = logging.getLogger("cv_api.access")
 logging.getLogger("httpx").setLevel(logging.WARNING)   # httpx INFO 는 요청 URL 전체를 남긴다 — BIS 인증키(serviceKey)가 로그에 새지 않게
@@ -123,6 +122,7 @@ class PublicPrefix:
 
 def create_app(role: Role = "all") -> FastAPI:
     s = get_settings()
+    log_setup.configure(s.LOG_DIR)
     title = {"api": "진단 API", "web": "웹 백엔드 (운영 관리)", "all": "진단 API + 웹 백엔드"}[role]
     lifespan = _web_lifespan if role == "web" else _api_lifespan(role)
     app = FastAPI(
@@ -138,24 +138,40 @@ def create_app(role: Role = "all") -> FastAPI:
 
     @app.middleware("http")
     async def _request_log(request: Request, call_next):
-        """요청 번호표 (API 점검 D5·D6): X-Request-ID 헤더 + 로그 한 줄. 남기는 것 8필드 —
-        req_id·path·status·dur_ms·input_len·label·score·model_version. 입력 원문·폼 값·키·클라이언트 IP 는 남기지 않는다."""
+        """요청 번호표 (API 점검 D5·D6): X-Request-ID 헤더 + 로그 한 줄. 남기는 것 11필드 —
+        req_id·method·path·status·reason_code·caller·dur_ms·input_len·label·score·model_version. 입력 원문·폼 값·키·클라이언트 IP 는 남기지 않는다.
+        장애는 error.log, 키 없는 요청·잘못된 키는 security.log 에도 남긴다 (log_setup.classify)."""
         req_id = uuid.uuid4().hex[:12]
         request.state.req_id = req_id
         t0 = time.perf_counter()
         status = 500
+        failure = None
         try:
             resp = await call_next(request)
             status = resp.status_code
             resp.headers["X-Request-ID"] = req_id
             return resp
+        except Exception as e:
+            failure = e
+            raise
         finally:
+            dur_ms = (time.perf_counter() - t0) * 1000
             out = getattr(request.state, "log_result", None) or {}
-            metrics.observe(request, status, time.perf_counter() - t0, out.get("label"))
-            access_log.info("req_id=%s path=%s status=%s dur_ms=%.1f input_len=%s label=%s score=%s model_version=%s",
-                            req_id, request.url.path, status, (time.perf_counter() - t0) * 1000,
+            metrics.observe(request, status, dur_ms / 1000, out.get("label"))
+            path = log_setup.clean(request.url.path)
+            reason = getattr(request.state, "reason_code", "-")
+            caller = log_setup.clean(getattr(request.state, "caller", "-"))
+            access_log.info("req_id=%s method=%s path=%s status=%s reason_code=%s caller=%s dur_ms=%.1f input_len=%s label=%s score=%s model_version=%s",
+                            req_id, request.method, path, status, reason, caller, dur_ms,
                             request.headers.get("content-length", "-"), out.get("label", "-"), out.get("score", "-"),
                             out.get("model_version", "-"))
+            slow = "/diagnose" in path and dur_ms > s.LOG_SLOW_MS
+            where = log_setup.classify(status, reason, getattr(request.state, "resolver_role", "-"), slow)
+            if where == "security":
+                security_log.event(f"key_rejected req_id={req_id} method={request.method} path={path} status={status} reason_code={reason}", to_app=False)
+            elif where == "error":
+                log_setup.error_log.error("req_id=%s method=%s path=%s status=%s reason_code=%s caller=%s dur_ms=%.1f%s",
+                                          req_id, request.method, path, status, reason, caller, dur_ms, " slow" if slow else "", exc_info=failure)
     for r in routers_for(role):
         app.include_router(r)
         app.add_api_route("/metrics", metrics.metrics_endpoint, methods=["GET"], include_in_schema=False)

@@ -33,11 +33,18 @@ def _g1(code: str, why: str, status: int, role: str = "self") -> GateBlocked:
 
 
 def get_principal(
+    request: Request,
     authorization: Optional[str] = Header(default=None, alias="Authorization"),
     x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key"),
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
     settings: Settings = Depends(get_settings),
 ) -> Principal:
+    p = _resolve_principal(authorization, x_admin_key, x_api_key, settings)
+    request.state.caller = p.caller_id   # 요청 로그용
+    return p
+
+
+def _resolve_principal(authorization: Optional[str], x_admin_key: Optional[str], x_api_key: Optional[str], settings: Settings) -> Principal:
     from .services import accounts   # 순환 import 방지
 
     if authorization and authorization.lower().startswith("bearer "):

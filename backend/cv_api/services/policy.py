@@ -1,6 +1,7 @@
 """P3 진단 정책 — ThresholdPolicy(UC8), ValidityPolicy·시연 모드(UC11), 노선별 유효 시간 미리보기(BR-CV-24), G8·G12."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -13,6 +14,8 @@ from ..repo import diagnosis as drepo
 from ..repo import policy as prepo
 from ..repo import reference as rrepo
 from ..settings import Settings, get_settings
+
+log = logging.getLogger("cv_api.policy")
 
 
 def threshold_list() -> List[Dict[str, Any]]:
@@ -46,6 +49,7 @@ def save_threshold(body: Dict[str, Any], by: str) -> Dict[str, Any]:
             raise GateBlocked("G8", "THRESHOLD_REJECTED", f"저장 거부 — {str(e.orig)[:120]}", "self", 422, record=False) from e
         drepo.invalidate_runs(conn, f"threshold policy {pid}", now)   # H8 만료 (UC8 A4)
         row = db.q1(conn, "SELECT * FROM threshold_policy WHERE policy_id=:p", p=pid)
+    log.info("policy_changed kind=threshold policy_id=%s by=%s", pid, by)
     row["is_current"] = db.iso(row["effective_from"]) <= now
     return row
 
@@ -113,6 +117,7 @@ def save_validity(body: Dict[str, Any], by: str, s: Optional[Settings] = None) -
             }, body.get("route_exceptions", []))
         except IntegrityError as e:
             raise GateBlocked("G8", "VALIDITY_REJECTED", f"저장 거부 — {str(e.orig)[:120]}", "self", 422, record=False) from e
+    log.info("policy_changed kind=validity demo_on=%s by=%s", bool(body.get("demo_on")), by)
     return validity_view(s, refresh=True)
 
 

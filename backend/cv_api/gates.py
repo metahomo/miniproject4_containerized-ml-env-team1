@@ -87,7 +87,8 @@ def record_gate_event(exc: GateBlocked) -> Optional[int]:
         })
 
 
-async def gate_exception_handler(_request: Request, exc: GateBlocked) -> JSONResponse:
+async def gate_exception_handler(request: Request, exc: GateBlocked) -> JSONResponse:
+    request.state.reason_code, request.state.resolver_role = exc.reason_code, exc.resolver_role   # 요청 로그용
     try:
         exc.gate_event_id = record_gate_event(exc)
     except Exception:  # 기록 실패가 응답을 막지 않는다
