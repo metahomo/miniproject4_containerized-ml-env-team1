@@ -201,6 +201,29 @@ def test_unwritable_log_dir_does_not_stop_service(stub, tmp_path, monkeypatch, c
         _reset()
 
 
+@pytest.mark.parametrize(
+    "log_dir, security_path, written",
+    [
+        ("logs", "", "logs/security.log"),         # LOG_DIR 만 있으면 그 폴더에
+        ("logs", "other/sec.log", "other/sec.log"),  # 직접 지정한 경로가 우선
+        ("", "other/sec.log", "other/sec.log"),
+        ("", "", None),                            # 둘 다 비면 파일을 만들지 않는다
+    ],
+)
+def test_security_log_file_location(tmp_path, monkeypatch, log_dir, security_path, written):
+    monkeypatch.setenv("LOG_DIR", str(tmp_path / log_dir) if log_dir else "")
+    monkeypatch.setenv("SECURITY_LOG_PATH", str(tmp_path / security_path) if security_path else "")
+    get_settings.cache_clear()
+    try:
+        security_log.event("location check")
+        files = [p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()]
+        assert files == ([written] if written else [])
+    finally:
+        monkeypatch.setenv("LOG_DIR", "")
+        monkeypatch.setenv("SECURITY_LOG_PATH", "")
+        _reset()
+
+
 def test_redact_patterns():
     text = log_setup.redact("a?ServiceKey=abc&b=1 mysql://u:pw@h/db Authorization: Bearer tok123 x-api-key: k1 [parameters: {'x': 1}]")
     assert "abc" not in text and ":pw@" not in text and "tok123" not in text and "k1" not in text and "'x'" not in text
