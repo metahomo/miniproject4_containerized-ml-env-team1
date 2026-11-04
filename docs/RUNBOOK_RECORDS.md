@@ -60,7 +60,7 @@ v1.1 백엔드 이미지는 v1.0과 같은 `libsqlite3-0 3.46.1-7+deb13u2`를 �
 
 ### 알려진 사항
 
-- PostgreSQL 앱 테스트의 실패는 `test_web_readiness_reads_db_when_no_detector_in_process`의 데드락입니다. 이전 `develop`에서도 간헐적으로 실패했습니다. 운영 DB는 SQLite이며, PostgreSQL 전환 전에 해결이 필요합니다.
+- PostgreSQL 앱 테스트의 실패는 `test_web_readiness_reads_db_when_no_detector_in_process`의 데드락입니다. 이전 `develop`에서도 간헐적으로 실패했습니다. 운영 DB는 SQLite라 서비스와 무관합니다.
 - `test_media.py`의 6개 테스트는 `DIAGNOSIS_API_URL`이 있어야 통과합니다. 로컬 `backend/.env`가 없는 환경에서는 값을 지정합니다.
 - v1.0 이미지는 빈 볼륨 첫 시작에서 준비가 끝나지 않는 경우가 다시 나타났습니다. 볼륨을 새로 만들어 다시 시작하니 9초 만에 `ready`가 됐습니다.
 - 운영 서버의 업그레이드 전 백업(이전 절차)에는 백업 시점 이전의 서버 시작 기록 1건이 빠져 있었습니다. 원인은 찾지 못했고 테스트 환경에서는 재현되지 않아, 백업 절차를 SQLite 백업 기능으로 바꿨습니다. 새 절차는 장시간 운영한 서버에서 아직 시험하지 않았습니다.

@@ -96,6 +96,6 @@
 
 ## 6. 접근 계층
 
-- `cv_api/db.py`: SQLAlchemy Core 엔진 + `cv_ddl.sql` 실행(기동 시 멱등 적용). SQLite/PostgreSQL 은 URL 로 전환. PostgreSQL 용 DDL 변환본은 `cv_ddl.postgres.sql`.
+- `cv_api/db.py`: SQLAlchemy Core 엔진 + `cv_ddl.sql` 실행(기동 시 멱등 적용).
 - 리포지토리 모듈은 영역별: `repo/reference.py`(A), `repo/policy.py`(B), `repo/external.py`(F), `repo/diagnosis.py`(C), `repo/measurement.py`(D), `repo/ops.py`(E), `repo/guide.py`(G).
 - 게이트 판정은 뷰만 읽는다: `v_readiness`, `v_camera_readiness`, `v_vehicle_measurement_status`, `v_route_validity_minutes`.

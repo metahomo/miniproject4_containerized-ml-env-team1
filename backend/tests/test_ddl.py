@@ -4,12 +4,8 @@ import sqlite3
 
 from cv_api import db
 from cv_api.settings import REPO_ROOT
-import os
-import pytest
 
-pytestmark = pytest.mark.skipif(bool(os.environ.get("PG_APP_URL")), reason="SQLite 전용 (PostgreSQL 은 test_ddl_postgres.py)")
-
-VIEWS = ["v_readiness", "v_camera_readiness", "v_vehicle_measurement_status", "v_route_validity_minutes", "v_assessment", "v_audit_record",
+VIEWS =["v_readiness", "v_camera_readiness", "v_vehicle_measurement_status", "v_route_validity_minutes", "v_assessment", "v_audit_record",
          "v_next_vehicle", "v_verification_item", "v_gate_open", "v_current_roi", "v_current_spec", "v_active_mapping", "v_current_threshold", "v_current_validity"]
 
 

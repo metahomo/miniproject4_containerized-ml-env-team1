@@ -17,7 +17,7 @@ IN_VEHICLE = ("bus_in", "train_in")   # 차내 카메라 유형 — 실측 대�
 
 
 def _parse(ts) -> datetime:
-    """ISO 문자열(SQLite) 또는 datetime(PostgreSQL TIMESTAMP) → UTC datetime."""
+    """ISO 문자열 → UTC datetime."""
     return datetime.strptime(db.iso(ts), "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
 
 

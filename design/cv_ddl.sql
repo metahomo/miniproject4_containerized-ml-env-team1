@@ -8,7 +8,7 @@
 --  · 멱등: CREATE ... IF NOT EXISTS. 재실행해도 실패하지 않는다.
 --  · 업무규칙 제약에는 BR-CV-nn 주석을 단다. CHECK 로 못 쓰는 규칙은 트리거 또는 [앱 책임] 주석.
 --  · 시각 컬럼은 ISO-8601 문자열(UTC, 'YYYY-MM-DDTHH:MM:SS')로 둔다.
---    [DBMS 주석] 검증 DBMS 가 SQLite(3.51)라 TIMESTAMP 타입이 없다. PostgreSQL 등에서는 TIMESTAMP 로 바꾼다.
+--    [DBMS 주석] 검증 DBMS 가 SQLite(3.51)라 TIMESTAMP 타입이 없다.
 --  · 원본 프레임·개인 정보 컬럼은 어디에도 없다 (FR-11, NFR-04, BR-CV-09).
 --  · 임계값·보존기간은 원천에 있는 값(신뢰도 0.6, 기본 10분, 시각 창 1분, 시연 2시간, SC 85%)만 쓰고
 --    나머지(규격 값, 판독 기준값, 보관 기간)는 컬럼만 두고 상수를 비운다.
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS camera_vehicle_map (
   CONSTRAINT chk_map_released CHECK ((verify_status = 'released') = (released_at IS NOT NULL))
 );
 -- BR-CV-25 / UC12 E2: 같은 카메라의 활성 매핑은 하나
--- [DBMS 주석] 부분 UNIQUE 인덱스(WHERE)는 SQL 표준이 아니다. SQLite·PostgreSQL 지원. MySQL 은 트리거로 대체.
+-- [DBMS 주석] 부분 UNIQUE 인덱스(WHERE)는 SQL 표준이 아니다. SQLite 지원.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_map_active_camera ON camera_vehicle_map(camera_id) WHERE released_at IS NULL;
 
 -- ---------------------------------------------------------------------
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS assessment (
   -- BR-CV-07 / G6: 신뢰도 0.6 미만이면 확정 등급 금지 (품질 경고에 의한 판독 불확실은 트리거 trg_warning_uncertain)
   CONSTRAINT chk_low_confidence_uncertain CHECK (mean_confidence >= 0.6 OR crowding_level = 'uncertain')
 );
--- [DBMS 주석] GENERATED ALWAYS AS ... STORED 는 SQL:2003 표준. SQLite 3.31+ 지원. MySQL/PostgreSQL 12+ 동일.
+-- [DBMS 주석] GENERATED ALWAYS AS ... STORED 는 SQL:2003 표준. SQLite 3.31+ 지원.
 
 -- 경고 (Key Entities Warning). 7종 + 모델이 내는 미정의 값은 'unknown' + raw_code (§16)
 CREATE TABLE IF NOT EXISTS assessment_warning (

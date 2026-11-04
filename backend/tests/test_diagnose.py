@@ -109,7 +109,7 @@ def test_reproducible_same_input_same_output(client, stub):
 def test_no_image_stored(client, stub):
     _diag(client)
     with db.connect() as conn:
-        cols = set(db._columns(conn, "diagnosis_request"))   # 방언 중립 (SQLite·PostgreSQL)
+        cols = set(db._columns(conn, "diagnosis_request"))
         row = db.q1(conn, "SELECT * FROM v_audit_record ORDER BY at DESC LIMIT 1")
     assert not any(c in ("frame", "image", "blob", "frame_data", "image_data") for c in cols)
     assert row and row["camera_id"] == "CAM-B12" and "caller_id" not in row

@@ -28,9 +28,6 @@ dependencies = [
 # 검출 모델 (Clarifications Q12: MaxTheTechy/yolo — Ultralytics YOLOv8n). 프로세스 안 적재용. 무거워서 분리
 vision = ["ultralytics>=8.2", "torch>=2.1", "torchvision"]
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5", "pyyaml"]
-# 운영 DBMS (research R2) + T073 검증: pgserver 는 포트 없이 유닉스 소켓으로 도는 PostgreSQL 바이너리 (tests/test_ddl_postgres.py)
-postgres = ["psycopg[binary]>=3.1"]
-pgtest = ["psycopg[binary]>=3.1", "pgserver>=0.1"]
 
 [tool.setuptools.packages.find]
 where = ["."]

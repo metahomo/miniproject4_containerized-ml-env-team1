@@ -62,7 +62,7 @@ def insert_arrival(conn: Connection, row: Dict[str, Any]) -> int:
 def expired_today(conn: Connection, day_prefix: str) -> int:
     r = db.q1(
         conn,
-        # 날짜 범위 비교 — LIKE 는 PostgreSQL TIMESTAMP 에 쓸 수 없다 (T073 후속). ISO 문자열 비교라 SQLite 도 같다
+        # 날짜 범위 비교 — ISO 문자열 비교
         "SELECT COUNT(*) AS n FROM camera_measurement WHERE superseded_at IS NULL AND expires_at >= :d0 AND expires_at <= :now",
         d0=day_prefix + "T00:00:00", now=db.now_iso(),
     )

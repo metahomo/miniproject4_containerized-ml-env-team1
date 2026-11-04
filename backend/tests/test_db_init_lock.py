@@ -1,7 +1,6 @@
 """처음 기동할 때 WAL 전환이 겹쳐 DB 초기화가 실패하던 문제 — 재시도, 스케줄러 대기, 실패 로그 (2026-11-02)."""
 import asyncio
 import logging
-import os
 import sqlite3
 import threading
 
@@ -13,7 +12,6 @@ from cv_api.app import create_app
 from cv_api.services import camera_power, ops
 from cv_api.settings import get_settings
 
-sqlite_only = pytest.mark.skipif(bool(os.environ.get("PG_APP_URL")), reason="SQLite 전용")
 
 
 class FakeCursor:
@@ -50,7 +48,6 @@ def test_wal_does_not_retry_other_errors(monkeypatch):
     assert cur.calls == 1
 
 
-@sqlite_only
 @pytest.mark.parametrize("round_", range(5))
 def test_concurrent_first_connections_create_schema(tmp_path, monkeypatch, round_):
     """새 파일에 여러 스레드가 동시에 처음 연결해도 초기화가 성공한다."""

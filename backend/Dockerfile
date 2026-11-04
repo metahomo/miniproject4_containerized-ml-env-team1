@@ -20,17 +20,15 @@ RUN apt-get update \
 WORKDIR /app/backend
 
 # torch 는 CPU 판을 먼저 — 기본 설치(CUDA)는 수 GB. lock 의 torch==2.14.0 은 2.14.0+cpu 로 충족된다
-# pgserver 는 PostgreSQL 테스트 전용(pgtest)이고 linux/arm64 설치 파일이 없다 — 이미지에는 넣지 않는다
 COPY backend/requirements.lock.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     TORCH=$(grep -E '^torch==' requirements.lock.txt) \
     && VISION=$(grep -E '^torchvision==' requirements.lock.txt) \
     && pip install --index-url https://download.pytorch.org/whl/cpu "$TORCH" "$VISION" \
-    && grep -vE '^pgserver==' requirements.lock.txt > /tmp/requirements.txt \
-    && pip install -r /tmp/requirements.txt
+    && pip install -r requirements.lock.txt
 
 # 앱 — 코드는 BACKEND_DIR(/app/backend)·REPO_ROOT(/app) 기준으로 파일을 찾는다 (cv_api/settings.py)
-COPY design/cv_ddl.sql design/cv_ddl.postgres.sql /app/design/
+COPY design/cv_ddl.sql /app/design/
 COPY backend/pyproject.toml ./
 COPY backend/cv_api ./cv_api
 COPY backend/data ./data

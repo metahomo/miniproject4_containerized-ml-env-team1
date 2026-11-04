@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     # ---- 저장소 ----
     DATABASE_URL: str = f"sqlite:///{BACKEND_DIR / 'cv.db'}"
     DDL_PATH: Path = REPO_ROOT / "design" / "cv_ddl.sql"
-    DDL_POSTGRES_PATH: Path = REPO_ROOT / "design" / "cv_ddl.postgres.sql"
 
     # ---- 인증 (R6) — "caller_id:key,caller_id:key". 키는 평문 또는 sha256:<hex> ----
     API_KEYS: str = "web:changeme-web"
@@ -161,10 +160,6 @@ class Settings(BaseSettings):
         weak = {hashlib.sha256(k.encode()).hexdigest() for k in PUBLIC_DEFAULT_KEYS}
         return tuple(name for name, table in (("API_KEYS", self.api_key_hashes), ("ADMIN_KEYS", self.admin_key_hashes))
                      if weak & set(table.values()))
-
-    @property
-    def is_sqlite(self) -> bool:
-        return self.DATABASE_URL.startswith("sqlite")
 
 
 @lru_cache
