@@ -9,7 +9,7 @@
 #
 # 바꿀 수 있는 값 — 셸 환경변수나 이 폴더의 .env 파일로 (모두 기본값이 있다):
 #   CV_IMAGE       이미지 저장소             기본 hyungnss/sumtong
-#   CV_TAG         판 (backend-<판>·frontend-<판>)   기본 v1.3 (또는 latest)
+#   CV_TAG         판 (backend-<판>·frontend-<판>)   기본 v1.5 (또는 latest)
 #   CV_WEB_PORT    웹 포트                   기본 9504
 #   CV_API_PORT    공개 API 포트             기본 9544
 #   CV_MODELS_DIR  모델 폴더                 기본 ./models
@@ -17,7 +17,7 @@ name: sumtong
 
 services:
   backend:
-    image: ${CV_IMAGE:-hyungnss/sumtong}:backend-${CV_TAG:-v1.3}
+    image: ${CV_IMAGE:-hyungnss/sumtong}:backend-${CV_TAG:-v1.5}
     env_file: docker.env
     volumes:
       - cv-data:/data                                            # SQLite DB (docker.env 의 DATABASE_URL=sqlite:////data/cv.db)
@@ -30,7 +30,7 @@ services:
     # 상태 확인은 이미지에 있다 (/v1/readiness, 시작 유예 120초)
 
   frontend:
-    image: ${CV_IMAGE:-hyungnss/sumtong}:frontend-${CV_TAG:-v1.3}
+    image: ${CV_IMAGE:-hyungnss/sumtong}:frontend-${CV_TAG:-v1.5}
     environment:
       BACKEND_WEB: backend:9524                                  # nginx 가 /v1·/docs 를 넘길 곳 (서비스 이름)
       BACKEND_API: backend:9544                                  # /API·/model-api 를 넘길 곳
