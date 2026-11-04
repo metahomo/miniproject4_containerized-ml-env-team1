@@ -9,7 +9,7 @@
 | OS | macOS / Linux (Windows 는 venv 활성화 명령만 다름) |
 | Python | 3.11 권장 (3.9.6 도 동작 — research.md 확인된 환경) |
 | Node | 20 LTS (웹서비스) |
-| DB | SQLite 파일(기본). 운영은 PostgreSQL 15 (`DATABASE_URL` 로 전환) |
+| DB | SQLite 파일 (`DATABASE_URL`) |
 | GPU | 선택. CPU 로도 YOLOv8n 단건 추론 ~0.1~0.4초 |
 | 외부 키 | 대전 BIS(공공데이터포털) 인증키 — 없으면 `EXTERNAL_PROVIDER=fixture` 로 고정 데이터 사용 |
 

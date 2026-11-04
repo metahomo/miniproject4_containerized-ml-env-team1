@@ -74,7 +74,7 @@ Docker Compose 하나로 다음 서비스를 기동하는 ML 환경:
 
 1. `trainer` — 학습 컨테이너(scikit-learn 또는 PyTorch CPU), 모델 아티팩트를 볼륨에 저장
 2. `api` — 추론 API(FastAPI), 저장된 모델을 로드해 `/predict`, `/health` 제공
-3. `db` — 예측 로그 저장(PostgreSQL 또는 MySQL)
+3. `db` — 예측 로그 저장(SQLite, `backend` 컨테이너의 `/data/cv.db`, 별도 DB 컨테이너 없음)
 4. `notebook` (선택) — Jupyter 개발 환경
 5. `trainer-gpu` (선택, `profiles: [gpu]`) — GPU 학습
 

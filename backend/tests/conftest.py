@@ -21,18 +21,9 @@ from cv_api.settings import get_settings  # noqa: E402
 from tests.helpers import ADMIN, KEY, make_frame  # noqa: E402,F401
 
 
-PG_APP_URL = os.environ.get("PG_APP_URL")   # 있으면 앱 테스트 전체를 PostgreSQL 로 (T073 후속). 테스트마다 public 스키마를 비운다 — 전용 DB 에만
-
-
 @pytest.fixture()
 def fresh_db(tmp_path: Path, monkeypatch):
-    url = PG_APP_URL or f"sqlite:///{tmp_path / 'test.db'}"
-    if PG_APP_URL:
-        from sqlalchemy import create_engine, text
-        eng = create_engine(PG_APP_URL)
-        with eng.begin() as c:
-            c.execute(text("DROP SCHEMA public CASCADE")); c.execute(text("CREATE SCHEMA public"))
-        eng.dispose()
+    url = f"sqlite:///{tmp_path / 'test.db'}"
     monkeypatch.setenv("DATABASE_URL", url)
     get_settings.cache_clear()
     db.reset_engine(url)

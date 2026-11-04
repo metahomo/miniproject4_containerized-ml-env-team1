@@ -49,7 +49,7 @@ shasum -a 256 models/yolo11n.pt
 | 모델 파일 | 실측 SHA-256 해시값 |
 |---|---|
 | `head_crowdhuman_n1280.pt` (두부 탐지, 24.5MB) | `D740367868D50137FCAEDD2EA55086C58395249FC28A82026109A45FE6D9B75A` |
-| `yolo11n.pt` (전신 검출 및 거리 분석, 5.6MB) | `0EBBC80D4A7680D1D2C9FB3656C0BE7DFD80D58C08A4A7678B45BEECDE94EF06` |
+| `yolo11n.pt` (전신 검출 및 거리 분석, 5.6MB) | `0EBBC80D4A7680D14987A577CD21342B65ECFD94632BD9A8DA63AE6417644EE1` |
 
 이후 명령은 모두 **이 폴더 안에서** 실행합니다 (PowerShell 또는 터미널에서 `cd sumtong`).
 

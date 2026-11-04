@@ -103,7 +103,7 @@ def upsert_guide(conn: Connection, version: str, status: str, contract_hash: str
 
 
 def replace_endpoints(conn: Connection, guide_id: int, rows: List[Dict[str, Any]]) -> None:
-    conn.execute(text("DELETE FROM api_endpoint WHERE guide_id = :g"), {"g": guide_id})   # 방언 중립 자리표시자 (PostgreSQL 호환)
+    conn.execute(text("DELETE FROM api_endpoint WHERE guide_id = :g"), {"g": guide_id})
     for r in rows:
         db.insert(conn, "api_endpoint", {"guide_id": guide_id, **r})
 

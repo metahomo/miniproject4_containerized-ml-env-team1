@@ -12,12 +12,11 @@
 - **Rationale**: Intent-Plan 의 유일한 확정 제약은 "docker 컨테이너를 사용하지 않고 만든다". 네 선택지 중 Intent-Specify 가 이미 FastAPI·Pydantic·Uvicorn·pytest 를 지정했고(핵심 활동 4·5항, 핵심 이네이블러), 추가 원천 3항이 "가상환경(uvicorn)" 을 명시한다. 선택지 설명에서 "머신러닝 모델 서빙"에 적합하다고 적힌 것도 React + FastAPI 뿐이다.
 - **Alternatives**: Vue + Node(백엔드가 파이썬이 아니라 YOLOv8 서빙에 부적합), Django(DRF + ORM 이 SD_03 의 DDL 정본과 이중화), Next.js(파이썬 추론을 별도 서비스로 두어야 해 구조가 늘어남).
 
-## R2. 데이터베이스 — SQLite(개발·시연) → PostgreSQL(운영), DDL 정본은 `design/cv_ddl.sql`
+## R2. 데이터베이스 — SQLite, DDL 정본은 `design/cv_ddl.sql`
 
-- **Decision**: 스키마는 SD_03 의 `cv_ddl.sql` 이 정본이다. 개발·시연은 SQLite 파일 DB(검증 완료된 환경), 운영은 PostgreSQL. ORM 을 쓰지 않고 SQLAlchemy Core(텍스트 SQL + 커넥션 풀)로 접근한다.
-- **Rationale**: SD_03 이 29 테이블·14 뷰·4 트리거를 SQLite 에서 3종 검증했다. ORM 모델을 따로 두면 정본이 둘이 된다. Intent-Plan 의 React + FastAPI 선택지가 PostgreSQL 을 권장하고, Docker 없이도 로컬 설치가 가능하다. 시연(HG/시연웹 시나리오)은 노트북 한 대에서 돌려야 하므로 SQLite 가 맞다.
+- **Decision**: 스키마는 SD_03 의 `cv_ddl.sql` 이 정본이다. 개발·시연·운영 모두 SQLite 파일 DB 를 쓴다. ORM 을 쓰지 않고 SQLAlchemy Core(텍스트 SQL + 커넥션 풀)로 접근한다.
+- **Rationale**: SD_03 이 29 테이블·14 뷰·4 트리거를 SQLite 에서 3종 검증했다. ORM 모델을 따로 두면 정본이 둘이 된다. 시연(HG/시연웹 시나리오)은 노트북 한 대에서 돌려야 하므로 SQLite 가 맞다.
 - **Alternatives**: SQLAlchemy ORM(정본 이중화), MariaDB(부분 UNIQUE 인덱스 미지원 — SD_03 §15-2 에서 트리거 대체 필요).
-- **이식 작업**: `cv_ddl.sql` 의 SQLite 전용 6종(§15-2)을 PostgreSQL 용 `cv_ddl.postgres.sql` 로 변환하는 태스크를 둔다. 뷰의 `strftime('now')` → `CURRENT_TIMESTAMP`, `julianday` → `EXTRACT(EPOCH)`, `group_concat` → `STRING_AGG`, `RAISE(ABORT)` → `RAISE EXCEPTION`.
 
 ## R3. 모델 — 확정 저장소 실물 확인과 어댑터 결정 (Clarifications 3차 Q12)
 

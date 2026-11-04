@@ -15,7 +15,7 @@
 | Backend | FastAPI 0.115+, Pydantic v2 (`extra="forbid"`), Uvicorn, lifespan 웜업 | Intent-Specify 핵심 이네이블러 |
 | Vision | Ultralytics YOLOv8n (`yolov8n.pt` — `github.com/MaxTheTechy/yolo` 의 person 검출 접근법, Clarifications Q12 확정), torch, opencv-python-headless, numpy, shapely(발 위치 ∈ ROI 판정) — 계산은 인원 ÷ 차량 전체 정원(research R22, 이전 R20 발자국 면적) | research R3·R20·R22 |
 | Frontend | React 18 + TypeScript + Vite, 스타일은 `design/style-guide.html` 토큰(나눔바른고딕) | Intent-Plan 선택지, SD_02 |
-| Storage | SQLite(개발·시연) / PostgreSQL 15(운영), SQLAlchemy Core, DDL 정본 `design/cv_ddl.sql` | research R2, SD_03 |
+| Storage | SQLite, SQLAlchemy Core, DDL 정본 `design/cv_ddl.sql` | research R2, SD_03 |
 | External | 대전 BIS API(인증키), 대전교통공사 배차표 CSV, TAGO 기준 정보 CSV — `external/` 인터페이스 + `FixtureProvider` | research R12 |
 | Testing | pytest + httpx TestClient, `bench.py`(p95), 계약-안내 대조 테스트(G17) | NFR-07, SC-03~06 |
 | Target Platform | Linux/macOS 서버, 가상환경 실행. Docker 미사용 | Intent-Plan |
@@ -38,7 +38,7 @@
 | 가용성 격리 (NFR-08) | PASS | `external/` 모듈 경계, 장애 시 `basis_type: unavailable` 로 200 |
 | 투명성 (NFR-09) | PASS | 모든 응답에 `notice`, `/v1/api-guide` 에 모델 카드 |
 | 단순성 | PASS (조건부) | ORM 미사용, 프로젝트 2개(backend/frontend). 웹서비스가 범위 미결(R8)이라 화면 10개 중 시연에 필요한 S0·S2·S3·S5·S6·S7·S8·S9 를 1차, S1·S4 는 2차 |
-| Docker 미사용 | PASS | venv + npm. PostgreSQL 은 로컬 설치 |
+| Docker 미사용 | PASS | venv + npm |
 
 **Post-design 재평가**: Phase 1 산출물(data-model, contracts, quickstart) 작성 후 위 판정에 변화 없음. 위반 0건.
 
@@ -72,7 +72,7 @@ backend/
 │   ├── predict.py                # YOLOv8n person 검출 + 인원 ÷ 정원 계산 → 4필드 + 인원수 (BR-CV-28 어댑터, R22)
 │   ├── quality.py                # 라플라시안·밝기·역광·occlusion 검사 → warnings (BR-CV-06·07·21)
 │   ├── gates.py                  # G0~G17 판정 → HTTP 상태 + gate_event 기록 (SD_02 §14)
-│   ├── db.py                     # SQLAlchemy Core, cv_ddl.sql 멱등 적용, SQLite/PostgreSQL
+│   ├── db.py                     # SQLAlchemy Core, cv_ddl.sql 멱등 적용, SQLite
 │   ├── repo/                     # 영역별 접근 (reference, policy, external, diagnosis, measurement, ops, guide)
 │   ├── services/
 │   │   ├── diagnosis.py          # P5 5.2~5.9 (P4·P6 이 재사용)
@@ -113,7 +113,6 @@ scripts/
 └── demo_prepare.py               # 시연 준비 P1~P6 자동화 (HG/시연웹 §3)
 
 design/cv_ddl.sql                 # 스키마 정본 (변경은 SD_03 갱신과 함께)
-design/cv_ddl.postgres.sql        # 이식본 (신규 태스크)
 ```
 
 **Structure Decision**: 웹 애플리케이션 구조(backend + frontend). Intent-Specify 가 지목한 `predict.py / schemas.py / app.py` 계층 분리를 `cv_api/` 최상위에 그대로 두고, SD_01 프로세스 P0~P9 를 `services/`, SD_03 영역 A~G 를 `repo/`, SD_02 컴포넌트 C1~C9·화면 S0~S9 를 `frontend/src/` 에 1:1 로 사상했다.
@@ -123,7 +122,7 @@ design/cv_ddl.postgres.sql        # 이식본 (신규 태스크)
 `research.md` 에 미결 19건을 결정했다. 핵심 발견 세 가지:
 
 1. **모델은 `MaxTheTechy/yolo`(YOLOv8n person 검출 PoC)로 확정됐고, 4필드 계약은 내지 않는다.** 가중치와 검출 접근법만 가져오고 계약은 `predict.py` 어댑터가 구현한다(R3). 저장소 라이선스 없음·가중치 AGPL-3.0 은 배포 전 법무 확인.
-2. **웹스택은 React + FastAPI, Docker 미사용**(R1). DB 는 SQLite → PostgreSQL, DDL 정본은 `cv_ddl.sql`(R2).
+2. **웹스택은 React + FastAPI, Docker 미사용**(R1). DB 는 SQLite, DDL 정본은 `cv_ddl.sql`(R2).
 3. **게이트 → HTTP 상태 대응 확정**(R7). 출력 차단형(G6·G7·G12·G13)은 200 + 상태 필드, 처리 중단형은 4xx/503.
 
 ## Phase 1: Design & Contracts — 완료
@@ -149,7 +148,7 @@ design/cv_ddl.postgres.sql        # 이식본 (신규 태스크)
 
 ## Phase 2: 이 명령의 범위 밖
 
-`/speckit.tasks` 가 `tasks.md` 를 만든다. 권고 순서: ① `cv_ddl.sql` 적용·`test_ddl.py` → ② `schemas.py`·`quality.py`·`predict.py` + 단위 테스트 → ③ `services/diagnosis.py` + `/v1/diagnose`·`/v1/readiness` → ④ 관리 API(카메라·ROI·정원·매핑·정책) → ⑤ 실측·후속 차량 + `external/FixtureProvider` → ⑥ 프론트 S0·S5·S7·S8·S9 → ⑦ `demo_prepare.py`·`bench.py` → ⑧ S2·S3·S6 → ⑨ BIS 실연동·PostgreSQL 이식 → ⑩ S1·S4.
+`/speckit.tasks` 가 `tasks.md` 를 만든다. 권고 순서: ① `cv_ddl.sql` 적용·`test_ddl.py` → ② `schemas.py`·`quality.py`·`predict.py` + 단위 테스트 → ③ `services/diagnosis.py` + `/v1/diagnose`·`/v1/readiness` → ④ 관리 API(카메라·ROI·정원·매핑·정책) → ⑤ 실측·후속 차량 + `external/FixtureProvider` → ⑥ 프론트 S0·S5·S7·S8·S9 → ⑦ `demo_prepare.py`·`bench.py` → ⑧ S2·S3·S6 → ⑨ BIS 실연동 → ⑩ S1·S4.
 
 ## Complexity Tracking
 
