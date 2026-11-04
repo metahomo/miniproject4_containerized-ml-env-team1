@@ -5,10 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: yolo11-bus-distance:1.2
+    image: yolo11-bus-distance:v1.3
     environment:
       - CV_MODELS_DIR=/app/backend/models
-      - APP_VERSION=1.2
+      - APP_VERSION=v1.3
     volumes:
       # 호스트의 모델 및 샘플 이미지 폴더 (읽기 전용 마운트)
       - ../backend/models:/app/backend/models:ro
@@ -22,7 +22,7 @@ services:
     # ------------------------------------------------------------------
     # [GPU 전환 시 아래 image 태그 및 deploy 블록 주석 해제]
     # ------------------------------------------------------------------
-    # image: yolo11-bus-distance:1.2-gpu
+    # image: yolo11-bus-distance:1.3-gpu
     # deploy:
     #   resources:
     #     reservations:

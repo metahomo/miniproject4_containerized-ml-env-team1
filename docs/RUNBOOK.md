@@ -1,8 +1,8 @@
-# 숨통 운영 안내 (Runbook) — v1.1
+# 숨통 운영 안내 (Runbook) — v1.3
 
 | 항목 | 값 |
 |---|---|
-| 운영 버전 | `CV_TAG=v1.1` |
+| 운영 버전 | `CV_TAG=v1.3` |
 | 담당자 | (입력 필요) |
 | 장애 연락처 | (입력 필요) |
 | 기준일 | 2026-11-03 |
@@ -14,30 +14,30 @@ web user ---- 9504 ----> frontend (nginx) ---- 9524, 9544 ----> backend
 API client ---------------- 9544 -----------------------------> backend
 
 backend ---> sumtong_cv-data volume (SQLite: /data/cv.db)
-backend ---> ./models folder (.pt, .json, read-only)
+backend ---> ./models folder (이중 모델: head_crowdhuman_n1280.pt, yolo11n.pt, 사이드카 .json, read-only)
 ```
 
 | 항목 | 값 |
 |---|---|
-| 백엔드 이미지 | `hyungnss/sumtong:backend-v1.1` (`sha256:73b14e3c6a242592ac3010c0942949435e645e466a8b8a6805a54a99189b7206`) |
-| 프론트엔드 이미지 | `hyungnss/sumtong:frontend-v1.1` (`sha256:97ae28a1342e0ccfdd004317dcf62bd59bddf3c3ae397da335177b3e672d16bc`) |
-| 소스 | Git 태그 `v1.1` (`a576aca`) |
-| 모델 | `head_crowdhuman_n1280.pt`, `.json`. 이미지 미포함, 받는 곳: (입력 필요) |
+| 백엔드 이미지 | `hyungnss/sumtong:backend-v1.3` |
+| 프론트엔드 이미지 | `hyungnss/sumtong:frontend-v1.3` |
+| 소스 | Git 브랜치/태그 `v1.3` |
+| 모델 | 이중 융합 모델 (두부: `head_crowdhuman_n1280.pt`, 전신/거리: `yolo11n.pt` 및 `.json`). 호스트 `./models` 폴더에서 마운트 |
 | 포트 | 웹 9504, API 9544 |
 | 데이터 | `sumtong_cv-data` 볼륨, `/data/cv.db` |
 | 보안 로그 | 같은 볼륨의 `/data/logs/security.log`. 계정 잠금과 잠금 해제 기록, 시간은 UTC |
-| 설정 파일 | `docker.env`: 백엔드 설정과 키 해시. `.env`: `CV_TAG`, 포트, 모델 경로 |
+| 설정 파일 | `docker.env`: 백엔드 설정과 키 해시. `.env`: `CV_TAG=v1.3`, 포트, `CV_MODELS_DIR=./models` |
 
 ## 2. 기동
 
-사전 준비: Docker Desktop(메모리 4GB 이상 권장). 운영 폴더에 `docker-compose.yml`, `docker.env.example`, `models/`를 둡니다. 모든 명령은 이 폴더의 PowerShell에서 실행합니다. WSL에서 실행할 때는 `curl.exe` 대신 `curl`을 쓰고, `.env`는 `echo "CV_TAG=v1.1" > .env`로 만듭니다.
+사전 준비: Docker Desktop(메모리 4GB 이상 권장). 운영 폴더에 `docker-compose.yml`, `docker.env.example`, `models/`를 둡니다. `models/` 폴더 안에는 `head_crowdhuman_n1280.pt`와 `yolo11n.pt` 및 메타데이터 `.json` 파일이 포함되어야 합니다. 모든 명령은 이 폴더의 PowerShell에서 실행합니다. WSL에서 실행할 때는 `curl.exe` 대신 `curl`을 쓰고, `.env`는 `echo "CV_TAG=v1.3" > .env`로 만듭니다.
 
 ### 처음 실행할 때
 
 1. 버전을 지정하고 설정 파일을 만듭니다.
 
     ```powershell
-    Set-Content .env "CV_TAG=v1.1" -Encoding ascii
+    Set-Content .env "CV_TAG=v1.3" -Encoding ascii
     Copy-Item docker.env.example docker.env
     ```
 
@@ -95,9 +95,10 @@ curl.exe -s http://localhost:9544/v1/readiness
 
 | 확인 항목 | 명령 또는 위치 | 정상 결과 |
 |---|---|---|
-| 이미지 버전 | `docker compose images` | `backend-v1.1`, `frontend-v1.1` |
+| 이미지 버전 | `docker compose images` | `hyungnss/sumtong:backend-v1.3`, `hyungnss/sumtong:frontend-v1.3` (또는 `backend-v1.3`, `frontend-v1.3`) |
 | 준비 상태, 모델 | `curl.exe -s http://localhost:9544/v1/readiness` | `"readiness":"ready"`, `"model_commit":"weights-sha256:d740367868d50137"` |
-| 로그 | `docker compose logs backend` | `detector ready: yolov8 head_crowdhuman_n1280.pt` |
+| 로그 | `docker compose logs backend` | `detector ready: dual head_crowdhuman_n1280.pt+yolo11n.pt` |
+| 이중 모델 CLI 추론 | `docker compose exec backend python -m cv_api.tools.infer_dual --source samples/bus_full.jpg` | 두부 9명, 전신 7명 검출 및 거리 쌍 요약 정상 출력 |
 | 웹 화면 | `http://localhost:9504` | 화면 표시 |
 | API 문서 | `http://localhost:9544/docs` | Swagger 표시 |
 
@@ -121,7 +122,7 @@ docker compose exec -e CV_ADMIN_KEY=<관리자 키 원문> -e CV_API_KEY=<호출
 
 | 증상 | 확인 방법 | 원인 | 조치 | 복구 확인 |
 |---|---|---|---|---|
-| 백엔드 `(unhealthy)`, 진단 불가 | `readiness`가 `unavailable`, `model_commit`이 `weights-sha256:missing`. 로그에 `detector load failed` | `models/` 폴더가 비었거나 파일이 없음 | `models/`의 `.pt`, `.json`을 확인한 뒤 `docker compose up -d --force-recreate backend` | 3장 확인 |
+| 백엔드 `(unhealthy)`, 진단 불가 | `readiness`가 `unavailable`, `model_commit`이 `weights-sha256:missing`. 로그에 `detector load failed` | `models/` 폴더가 비었거나 이중 모델 파일(`head_crowdhuman_n1280.pt`, `yolo11n.pt`)이 없음 | `models/`의 이중 `.pt`, `.json`을 확인한 뒤 `docker compose up -d --force-recreate backend` | 3장 확인 |
 | 로그인할 때 `로그인 실패가 많아 잠겼다` (HTTP 429) | **계정 · 키 관리**에 `잠김` 표시. `docker compose exec backend cat /data/logs/security.log`에 `login_locked` | 15분 안에 로그인 5번 실패 | 15분 뒤 자동 해제. 급하면 운영 관리자가 **잠금 해제** 버튼을 누름. 운영 관리자가 잠겼으면 관리자 키로 로그인해 해제 | 해당 계정 로그인 성공 |
 | 백엔드 `Restarting` 반복 | 로그에 `시작 거부` | `docker.env`의 `API_KEYS`, `ADMIN_KEYS`가 비었거나 기본값 | 2장대로 키를 넣고 `docker compose up -d` | 3장 확인 |
 | 시작 직후 로그에 `no such table` | `curl.exe -s http://localhost:9544/v1/readiness` | 새 볼륨에서 DB 준비 전에 들어온 상태 조회 | `ready`가 되면 조치 없음. 1분이 지나도 `ready`가 아니면 로그의 `startup failed` 줄을 담당자에게 전달 | `"readiness":"ready"` |
@@ -163,7 +164,7 @@ docker compose start backend
 
 ## 7. 버전 변경과 롤백
 
-되돌릴 수 있는 이전 버전은 v1.0입니다. 운영에서는 `latest` 대신 `.env`의 `CV_TAG`로 버전을 고정합니다. 배포한 버전 태그는 다시 푸시하지 않습니다.
+되돌릴 수 있는 이전 버전은 v1.1입니다. 운영에서는 `latest` 대신 `.env`의 `CV_TAG`로 버전을 고정합니다. 배포한 버전 태그는 다시 푸시하지 않습니다.
 
 ### 버전 올리기
 
@@ -175,14 +176,12 @@ docker compose start backend
 
 ### 롤백
 
-1. `.env`를 `CV_TAG=v1.0`으로 되돌립니다.
+1. `.env`를 `CV_TAG=v1.1`로 되돌립니다.
 2. `docker compose pull` 후 `docker compose up -d`를 실행합니다.
-3. 3장 확인을 수행합니다. 이미지 버전의 정상 결과는 `backend-v1.0`, `frontend-v1.0`입니다.
+3. 3장 확인을 수행합니다. 이미지 버전의 정상 결과는 `backend-v1.1`, `frontend-v1.1`입니다.
 4. 데이터까지 업그레이드 전으로 되돌릴 때만 6장대로 백업을 복구합니다.
 
-v1.1에서 v1.0으로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그인, 쓰기가 정상입니다(2026-11-03 확인). 다만 v1.0에는 로그인 시도 제한과 잠금 해제가 없습니다.
-
-> **주의:** v1.0은 빈 볼륨에서 처음 시작할 때 DB 초기화가 실패해 준비가 끝나지 않을 수 있습니다. 기존 볼륨으로 되돌릴 때만 사용합니다.
+v1.3에서 v1.1로 되돌릴 때는 DB를 복구하지 않아도 시작, 로그인, 쓰기가 정상입니다(2026-11-03 확인). 다만 v1.1은 단일 모델(두부 탐지) 기반입니다.
 
 ## 8. 민감정보
 

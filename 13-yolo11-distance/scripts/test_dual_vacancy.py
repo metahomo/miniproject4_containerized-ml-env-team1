@@ -11,8 +11,8 @@ sys.path.append(PROJECT_DIR)
 from src.dual_pipeline import DualModelVacancyPipeline
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="YOLOv8 Head + YOLO11 Distance 이중 모델 융합 추론 (v1.2)")
-    parser.add_argument("--version", action="version", version="YOLO11 Bus Distance Pipeline v1.2")
+    parser = argparse.ArgumentParser(description="YOLOv8 Head + YOLO11 Distance 이중 모델 융합 추론 (v1.3)")
+    parser.add_argument("--version", action="version", version="YOLO11 Bus Distance Pipeline v1.3")
     parser.add_argument("--source", type=str, required=True, help="입력 이미지 경로")
     parser.add_argument("--out", type=str, required=True, help="출력 결과 이미지 경로")
     parser.add_argument("--capacity", type=int, default=30, help="기준 정원")
@@ -45,7 +45,7 @@ def main():
     s = payload["fusion_summary"]
 
     print("\n" + "="*55)
-    print(" 🤖 [YOLOv8 Head + YOLO11 Distance 융합 분석 엔진 v1.2]")
+    print(" 🤖 [YOLOv8 Head + YOLO11 Distance 융합 분석 엔진 v1.3]")
     print("="*55)
     print(f"• 추론 총 소요 시간: {elapsed:.3f}초")
     print(f"• 설정된 파라미터: Head Conf={args.head_conf}, Person Conf={args.person_conf}, Head ImgSz={args.head_imgsz}")

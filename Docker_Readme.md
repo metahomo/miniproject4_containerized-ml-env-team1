@@ -13,7 +13,7 @@
 |---|---|
 | **Docker Desktop** | https://www.docker.com/products/docker-desktop/ 에서 설치 (Windows · Mac · Linux). 메모리는 **4GB 이상** 할당 권장 |
 | **파일 2개** (전달자에게 받음) | `docker-compose.yml`, `docker.env.example` |
-| **모델 폴더** (드라이브로 받음) | `models` 폴더 — 안에 `head_crowdhuman_n1280.pt`, `head_crowdhuman_n1280.json` |
+| **모델 폴더** (드라이브로 받음) | `models` 폴더 — 안에 이중 모델 파일 2종(`head_crowdhuman_n1280.pt`, `yolo11n.pt`)과 각각의 메타데이터 `.json` |
 
 > 모델 파일은 라이선스(AGPL-3.0 · CrowdHuman CC BY-NC 4.0) 확인 중이라 **다른 곳에 다시 배포하지 마세요.**
 
@@ -29,18 +29,27 @@ sumtong/
 ├─ docker.env.example
 └─ models/
    ├─ head_crowdhuman_n1280.pt
-   └─ head_crowdhuman_n1280.json
+   ├─ head_crowdhuman_n1280.json
+   ├─ yolo11n.pt
+   └─ yolo11n.json
 ```
 
-받은 모델 파일이 맞는지 확인하려면(선택) — 값이 아래와 같아야 합니다.
+받은 모델 파일 2종이 맞는지 확인하려면(선택) — 실측 해시값이 아래와 같아야 합니다.
 
 ```powershell
 # Windows PowerShell
 Get-FileHash models\head_crowdhuman_n1280.pt -Algorithm SHA256
+Get-FileHash models\yolo11n.pt -Algorithm SHA256
+
 # Mac / Linux
 shasum -a 256 models/head_crowdhuman_n1280.pt
+shasum -a 256 models/yolo11n.pt
 ```
-`D740367868D50137FCAEDD2EA55086C58395249FC28A82026109A45FE6D9B75A`
+
+| 모델 파일 | 실측 SHA-256 해시값 |
+|---|---|
+| `head_crowdhuman_n1280.pt` (두부 탐지, 24.5MB) | `D740367868D50137FCAEDD2EA55086C58395249FC28A82026109A45FE6D9B75A` |
+| `yolo11n.pt` (전신 검출 및 거리 분석, 5.6MB) | `0EBBC80D4A7680D1D2C9FB3656C0BE7DFD80D58C08A4A7678B45BEECDE94EF06` |
 
 이후 명령은 모두 **이 폴더 안에서** 실행합니다 (PowerShell 또는 터미널에서 `cd sumtong`).
 
@@ -121,6 +130,32 @@ docker compose exec backend ls -la /app/backend/models
 | http://localhost:9544/docs | API 명세 (Swagger) |
 
 같은 네트워크의 다른 PC에서는 `http://<이 PC의 IP>:9504` 로 접속합니다. (방화벽에서 9504·9544 포트 허용 필요)
+
+### 4-1. 웹 + API + CLI 추론 3중 실행 매뉴얼
+
+v1.3 환경에서는 **웹 화면(UI), REST API, CLI 터미널 단독 추론**의 3가지 방식으로 자유롭게 서비스를 활용할 수 있습니다.
+
+1. **웹 화면 (GUI)**
+   - 브라우저 주소: `http://localhost:9504`
+   - 버스 노선·정류장 조회, 차량별 잔여 공간 및 실시간 혼잡도 대시보드를 시각적으로 확인합니다.
+
+2. **REST API 실시간 진단 (HTTP)**
+   - API 명세서: `http://localhost:9544/docs` (Swagger UI 제공)
+   - 이미지 프레임 진단 호출 예시:
+     ```powershell
+     curl.exe -X POST "http://localhost:9544/v1/diagnose" `
+       -H "X-API-Key: <호출 키 원문>" `
+       -F "frame=@backend/samples/bus_full.jpg" `
+       -F "camera_id=CAM_001"
+     ```
+   - 응답 JSON: 기본 점유율과 함께 이중 모델 융합 지표(`crowded_ratio`, `close_pairs_count`, `avg_distance_px`, `vacancy_status_kr`)가 반환됩니다.
+
+3. **CLI 단독 이중 융합 추론 (CLI)**
+   - 웹 서버나 API 호출 없이도 컨테이너 내부 추론 엔진으로 직접 분석 결과를 콘솔로 확인합니다:
+     ```powershell
+     docker compose exec backend python -m cv_api.tools.infer_dual --source samples/bus_full.jpg --capacity 80
+     ```
+   - 시각화 이미지 저장: `--out result.jpg` 옵션을 추가하면 YOLOv8 두부 중심점(파란 원), YOLO11 전신 박스(녹색) 및 승객 간 근접 거리선(빨간 선)이 합성된 이미지가 생성됩니다.
 
 ---
 
