@@ -2,6 +2,58 @@
 
 운영 절차는 [RUNBOOK.md](RUNBOOK.md)를 봅니다. 이 문서는 버전별 확인 결과만 기록합니다.
 
+## v1.5 빌드·검증·배포 기록
+
+2026-11-04에 Git 태그 `v1.5`(`b856408`)로 이미지를 만들어 운영 서버(WSL Ubuntu 24.04 + Docker Desktop, 메모리 4GB)에 배포했습니다. v1.4에 #67 운영 로그와 #70 PostgreSQL 코드 제거를 더한 판입니다.
+
+| 항목 | 결과 |
+|---|---|
+| 소스 | Git 태그 `v1.5`, `b856408` |
+| 빌드 | `docker build --pull --no-cache`, 백엔드와 프론트엔드 합쳐 407초 |
+| 백엔드 이미지 | `hyungnss/sumtong:backend-v1.5`, digest `sha256:7d0bc0686d49a56d7aa28032766c22371be73055f103058a83e03089f2002bf1`, 디스크 2.8GB / 내려받기 약 654MB |
+| 프론트엔드 이미지 | `hyungnss/sumtong:frontend-v1.5`, digest `sha256:4f6fe21f4bf05c4098094afbc5ade4379dc8fd570b6ab67fdd1ab32b18bc7243`, 디스크 92.2MB / 내려받기 약 26.5MB |
+| `latest` | `backend-latest`, `frontend-latest`를 위 digest로 옮김 |
+| SQLite | 이미지의 `libsqlite3-0` `3.46.1-7+deb13u2` |
+| 이미지 내용 | 모델 가중치, `.env`, `docker.env`, DB 없음. PostgreSQL 패키지와 DDL 없음 (`.pt`는 torch 패키지의 2.8KB 테스트 파일 1개뿐) |
+| 백엔드 테스트 | `pytest` 199 passed |
+| 운영 로그 컨테이너 시험 | 24개 통과. 파일 분류, 비밀값 없음, 컨테이너 재생성 후 유지, 모델 없을 때 503 기록 |
+| SQLite 컨테이너 시험 | 24개 중 23개 통과. 빈 볼륨 새 시작 10회 정상 |
+| 4개 서비스 기동 | 운영 서버를 내리고 디스크 캐시를 비운 상태로 3회, 22개 항목 모두 통과. 시작 21.7~30.0초 |
+
+### 운영 서버 배포
+
+| 항목 | 결과 |
+|---|---|
+| 이전 버전 | v1.1 |
+| 추가한 것 | `models/yolo11n.pt`, `yolo11n.json`, `docker-compose.monitoring.yml`, `monitoring/` |
+| 바꾼 설정 | `docker.env`의 `DETECTOR=dual`, `MODEL_DISTANCE_WEIGHTS`, `DISTANCE_THRESHOLD`. `.env`의 `CV_IMAGE`, `CV_TAG`, `COMPOSE_FILE`, `GRAFANA_ADMIN_PASSWORD` |
+| 백업 | 배포 전 DB 백업 `ok`, 계정 1개, 노선 143개 |
+| 배포 후 | 4개 서비스 `(healthy)`, `ready`, `dual`, 시작 7.6초. DB `ok`, 계정 1개, 노선 143개로 유지 |
+| 웹 확인 | 로그인 정상, 진단 10건 모두 200, 응답 0.36~1.2초, `error.log` 0줄 |
+| 모니터링 | Prometheus 수집 대상 `up`, 진단 지표 수집 |
+| 로그 확인 명령 | `ls`, `tail`, `docker compose cp` 실행 확인 |
+| 메모리 (진단 후) | 백엔드 531.4MiB, 프론트엔드 9.1MiB, Grafana 112.3MiB, Prometheus 29.1MiB |
+
+### 롤백 시험
+
+| 항목 | 결과 |
+|---|---|
+| v1.1 데이터 → v1.5 → v1.4 → v1.5 (3회 반복) | 시험용 볼륨에서 105개 항목 모두 통과. 시작, 로그인, 진단, 쓰기, 공개 `/metrics` 차단, 수집 대상 `up`, DB `ok` |
+| v1.4 이미지 | digest가 v1.4 기록과 일치 |
+| v1.4 동안의 로그 | 2·3회차에 `app.log`, `security.log` 줄 수 변화 없음. 기존 파일은 유지되고 v1.5로 돌아오면 다시 쌓임 |
+| v1.1 ↔ v1.5 (5회 반복) | v1.1 진단 15회 모두 200 |
+
+### 시험 중 발견한 내용
+
+| 현상 | 내용 | 현재 판단 |
+|---|---|---|
+| 재시작 직후 `ready` 표시 | 시작 1.9초에 `ready`로 보였으나 진단은 `503 NOT_READY`. 준비 상태를 DB의 마지막 기록에서 읽는 코드 구조로 v1.1에도 있음 | 몇 초 뒤 풀림. RUNBOOK 2장에 반영. SQLite 컨테이너 시험의 실패 1개도 이 현상으로 판단하나, 당시 응답은 남아 있지 않음 |
+| 모델 점검 시간 초과 | 빌드와 다른 시험 직후, 운영 v1.1과 함께 4개 서비스를 처음 띄울 때 1회 `추론 시간 초과 (> 30.0s)`로 `unavailable`. 이후 6회는 재현되지 않음 | 원인 미확정. 부하로 추정. 자동 재시도 없음. RUNBOOK 5장에 반영 |
+
+### 실행하지 않은 항목
+
+운영 서버 재부팅 후 동작, 모델 점검 시간 초과 상태에서의 복구(재현되지 않음), Windows PowerShell 절차, 운영 서버에서의 실제 롤백.
+
 ## v1.4 빌드·검증 기록
 
 2026-11-04에 WSL(Ubuntu 24.04) + Docker Desktop에서 `develop` `69e1ad7`(#61 모니터링, #64·#65 이중 모델 포함)로 v1.4 이미지를 만들고 확인했습니다(RUNBOOK 10장 절차). 이미지는 빌드한 사람의 Docker Hub 공개 저장소 `ryujh33/sumtong`에 올립니다(v1.1 이하는 `hyungnss/sumtong`).
