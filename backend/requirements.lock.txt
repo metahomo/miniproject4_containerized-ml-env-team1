@@ -28,7 +28,7 @@ nvidia-ml-py==13.615.71
 opencv-python==5.0.0.93
 opencv-python-headless==5.0.0.93
 packaging==26.3
-pillow==12.3.0
+pillow==13.0.0
 pillow_heif==1.8.0
 pluggy==1.6.0
 polars==1.44.2
